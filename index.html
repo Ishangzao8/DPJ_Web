@@ -1,0 +1,2541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#eef2f8">
+<title>电子万年历 · OneNET 云控台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   设计令牌
+   ═══════════════════════════════════════════════════════════ */
+:root{
+  /* 冷灰 / 浅灰蓝 / 银白 —— 高级冷色调 */
+  --bg-base:#e9eef6;
+  --bg-g1:#f4f7fc;
+  --bg-g2:#dfe6f1;
+  --bg-g3:#eef1f7;
+
+  /* 玻璃拟态表面 */
+  --glass:rgba(255,255,255,.55);
+  --glass-strong:rgba(255,255,255,.72);
+  --glass-thin:rgba(255,255,255,.34);
+  --glass-brd:rgba(255,255,255,.75);
+
+  /* 新拟态阴影（外凸 = 卡片，内凹 = 输入槽） */
+  --sh-raise:8px 8px 20px rgba(160,175,199,.34), -8px -8px 20px rgba(255,255,255,.92);
+  --sh-raise-sm:4px 4px 10px rgba(160,175,199,.30), -4px -4px 10px rgba(255,255,255,.88);
+  --sh-sink:inset 4px 4px 9px rgba(160,175,199,.30), inset -4px -4px 9px rgba(255,255,255,.90);
+  --sh-float:0 18px 44px -18px rgba(120,140,172,.55);
+
+  /* 文字 */
+  --tx-1:#2b3648;
+  --tx-2:#5d6b81;
+  --tx-3:#8b98ac;
+  --tx-inv:#ffffff;
+
+  /* 语义色 */
+  --accent:#6d8bb5;
+  --accent-2:#8fa8cc;
+  --ok:#5f9ea0;
+  --off:#9aa8bd;
+  --warn:#c99a6a;
+  --bad:#bf7b7b;
+  --info:#7d8fb8;
+
+  /* 渐变 */
+  --gr-silver:linear-gradient(135deg,#fdfefe 0%,#e8eef7 55%,#dde5f1 100%);
+  --gr-accent:linear-gradient(135deg,#8fa8cc 0%,#6d8bb5 52%,#5d7ba6 100%);
+  --gr-metal:linear-gradient(135deg,#eef2f8 0%,#dbe3ef 100%);
+
+  --r-xl:34px;
+  --r-lg:26px;
+  --r-md:18px;
+  --r-sm:14px;
+
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+
+body{
+  min-height:100vh;
+  font-family:'Inter','PingFang SC','Microsoft YaHei','Hiragino Sans GB',Roboto,'Helvetica Neue',sans-serif;
+  font-weight:400;
+  color:var(--tx-1);
+  background:var(--bg-base);
+  /* 梦幻灰蓝 → 银白/米白 渐变过渡 */
+  background-image:
+    radial-gradient(1100px 720px at 8% -8%,  rgba(255,255,255,.95) 0%, rgba(255,255,255,0) 62%),
+    radial-gradient(900px 680px at 96% 4%,   #e3ebf6 0%, rgba(227,235,246,0) 58%),
+    radial-gradient(1000px 800px at 78% 96%, #f7f5f0 0%, rgba(247,245,240,0) 60%),
+    radial-gradient(820px 620px at 2% 88%,   #dbe4f0 0%, rgba(219,228,240,0) 58%),
+    linear-gradient(158deg,#f6f8fc 0%,#e9eef6 38%,#dfe6f1 72%,#eef0f4 100%);
+  background-attachment:fixed;
+  padding:clamp(16px,2.6vw,40px);
+  padding-bottom:calc(40px + env(safe-area-inset-bottom));
+  letter-spacing:.01em;
+}
+
+/* 极细噪点，避免大面积渐变出现色带 */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E");
+}
+
+/* .wrap 定义见下方「侧栏点导航」区块（含侧栏让位） */
+
+/* ═══════════════════════════════════════════════════════════
+   通用玻璃 / 新拟态组件
+   ═══════════════════════════════════════════════════════════ */
+.glass{
+  background:var(--glass);
+  -webkit-backdrop-filter:blur(26px) saturate(180%);
+  backdrop-filter:blur(26px) saturate(180%);
+  border:1px solid var(--glass-brd);
+  box-shadow:var(--sh-raise), var(--sh-float);
+}
+.sink{
+  background:rgba(255,255,255,.30);
+  box-shadow:var(--sh-sink);
+  border:1px solid rgba(255,255,255,.5);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   顶栏
+   ═══════════════════════════════════════════════════════════ */
+.top{
+  display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between;
+  padding:22px clamp(18px,2.4vw,30px);
+  border-radius:var(--r-xl);
+  margin-bottom:clamp(16px,2vw,26px);
+}
+.brand{display:flex;align-items:center;gap:15px;min-width:0}
+.logo{
+  width:52px;height:52px;flex:none;border-radius:17px;
+  display:grid;place-items:center;
+  background:var(--gr-accent);
+  box-shadow:0 10px 22px -8px rgba(93,123,166,.62), inset 0 1px 0 rgba(255,255,255,.42);
+}
+.logo svg{width:27px;height:27px;stroke:#fff;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.brand h1{font-size:clamp(17px,2vw,21px);font-weight:600;letter-spacing:.02em;white-space:nowrap}
+.mono{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11.5px;letter-spacing:0}
+
+.top-r{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+
+/* 在线状态胶囊 */
+.pill{
+  display:inline-flex;align-items:center;gap:9px;
+  padding:9px 17px 9px 13px;border-radius:999px;
+  font-size:13px;font-weight:500;white-space:nowrap;
+  background:rgba(255,255,255,.5);
+  box-shadow:var(--sh-sink);
+  transition:.45s var(--ease);
+}
+.dot{width:9px;height:9px;border-radius:50%;flex:none;position:relative;background:var(--off)}
+.pill.on .dot{background:var(--ok)}
+.pill.off .dot{background:var(--bad)}
+.dot::after{
+  content:'';position:absolute;inset:-5px;border-radius:50%;
+  border:1.5px solid currentColor;opacity:0;
+}
+.pill.on .dot{color:var(--ok)}
+.pill.off .dot{color:var(--bad)}
+.pill.on .dot::after{animation:ripple 2.1s var(--ease) infinite}
+@keyframes ripple{
+  0%{transform:scale(.6);opacity:.65}
+  70%{transform:scale(1.75);opacity:0}
+  100%{opacity:0}
+}
+
+/* 按钮 */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:11px 20px;border:none;border-radius:999px;cursor:pointer;
+  font-family:inherit;font-size:13.5px;font-weight:500;color:var(--tx-1);
+  background:var(--glass-strong);
+  box-shadow:var(--sh-raise-sm);
+  transition:transform .22s var(--ease),box-shadow .22s var(--ease),background .22s;
+  -webkit-user-select:none;user-select:none;
+}
+.btn:hover{transform:translateY(-2px);box-shadow:6px 8px 16px rgba(160,175,199,.34),-5px -5px 14px rgba(255,255,255,.9)}
+.btn:active{transform:translateY(0);box-shadow:var(--sh-sink)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:var(--sh-sink)}
+.btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn-primary{background:var(--gr-accent);color:#fff;box-shadow:0 10px 22px -9px rgba(93,123,166,.7), inset 0 1px 0 rgba(255,255,255,.34)}
+.btn-primary:hover{box-shadow:0 15px 28px -10px rgba(93,123,166,.8), inset 0 1px 0 rgba(255,255,255,.4)}
+.btn-sm{padding:9px 15px;font-size:12.5px}
+.btn-icon{padding:11px;width:41px;height:41px}
+.btn-icon svg{width:17px;height:17px}
+
+.spin{animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ═══════════════════════════════════════════════════════════
+   侧栏点导航（可折叠）
+   ═══════════════════════════════════════════════════════════ */
+.rail{
+  position:fixed; left:14px; top:50%; z-index:80;
+  transform:translateY(-50%);
+  display:flex;flex-direction:column;gap:6px;
+  padding:8px;border-radius:var(--r-xl);
+  background:var(--glass);
+  -webkit-backdrop-filter:blur(26px) saturate(180%);
+  backdrop-filter:blur(26px) saturate(180%);
+  border:1px solid var(--glass-brd);
+  box-shadow:var(--sh-raise),var(--sh-float);
+  width:172px;
+  transition:width .42s var(--ease),padding .42s var(--ease);
+}
+body.rail-off .rail{width:56px;padding:8px 6px}
+.rail-tg{
+  align-self:stretch;height:30px;flex:none;border:none;border-radius:var(--r-sm);
+  background:transparent;color:var(--tx-3);cursor:pointer;
+  display:grid;place-items:center;transition:.24s var(--ease);
+}
+.rail-tg:hover{background:rgba(255,255,255,.5);color:var(--tx-1)}
+.rail-tg svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .42s var(--ease)}
+body.rail-off .rail-tg svg{transform:rotate(180deg)}
+.rail-dot{
+  display:flex;align-items:center;gap:11px;min-width:0;
+  padding:9px 10px;border:none;border-radius:var(--r-md);
+  background:transparent;cursor:pointer;font-family:inherit;
+  color:var(--tx-2);text-align:left;
+  transition:background .26s var(--ease),color .26s var(--ease);
+}
+.rail-dot:hover{background:rgba(255,255,255,.46)}
+.rail-dot.is-on{background:var(--gr-accent);color:#fff;
+  box-shadow:0 8px 18px -8px rgba(93,123,166,.66),inset 0 1px 0 rgba(255,255,255,.3)}
+.rail-dot__i{width:22px;height:22px;flex:none;display:grid;place-items:center;border-radius:50%;
+  background:rgba(109,139,181,.16);transition:.26s var(--ease)}
+.rail-dot__i svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.rail-dot.is-on .rail-dot__i{background:rgba(255,255,255,.26)}
+.rail-dot__t{font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;
+  transition:opacity .26s var(--ease)}
+body.rail-off .rail-dot__t{opacity:0;pointer-events:none;width:0}
+body.rail-off .rail-dot{justify-content:center;padding:9px 4px;gap:0}
+
+/* 视图模式切换（手机 / 电脑） */
+.rail-seg{  display:flex;gap:4px;margin-top:6px;padding-top:8px;
+  border-top:1px solid rgba(160,175,199,.18);
+}
+.rail-seg__b{
+  flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;gap:5px;
+  padding:8px 4px;border:none;border-radius:var(--r-sm);cursor:pointer;
+  background:transparent;font-family:inherit;font-size:11.5px;font-weight:500;
+  color:var(--tx-3);transition:.24s var(--ease);
+}
+.rail-seg__b:hover{background:rgba(255,255,255,.5);color:var(--tx-1)}
+.rail-seg__b.is-on{background:var(--gr-accent);color:#fff;
+  box-shadow:0 6px 14px -7px rgba(93,123,166,.7), inset 0 1px 0 rgba(255,255,255,.3)}
+.rail-seg__b svg{width:14px;height:14px;flex:none;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.rail-seg__t{white-space:nowrap;overflow:hidden;transition:opacity .26s var(--ease)}
+/* 折叠态只留图标 */
+body.rail-off .rail-seg{flex-direction:column;gap:3px}
+body.rail-off .rail-seg__t{opacity:0;width:0;pointer-events:none}
+body.rail-off .rail-seg__b{padding:8px 2px}
+
+/* ── 手机视图：导航入口改为顶栏「···」按钮 ──
+   原本常驻左侧的竖条在手机端占掉 60px 固定左槽（.wrap padding-left），
+   白白压缩了信息区宽度。这里改为：rail 隐藏，导航收进顶栏右上角的
+   「···」浮层，点开时从按钮位置向右下带出。
+
+   定位用**绝对定位锚定 .brand 所在的那一行**：手机端 .top 是
+   flex-wrap 布局，状态胶囊+刷新会换到第二行，若按 .top 的 50% 定位，
+   按钮会掉进两行之间的空隙（实测 midY 78 vs 标题 52）。
+   这里以 .top 高度减去标题行高推算，或者更稳的做法是让 .top 不换行、
+   状态胶囊与刷新留在第二行，按钮对齐第一行标题。 */
+/* 注意：display 只能写一次。这里写 none表示"桌面端默认不显示"，
+   浮层形态（手机视图 / 窄屏兜底）由后面的 body[data-mode=...] 规则开启。
+   切勿在同一块里再写 display:grid —— 后者会覆盖前者导致宽屏也冒出按钮。 */
+.rail-fab{
+  /* 桌面端不用，由 data-mode 规则开 */
+  -webkit-user-select:none;user-select:none;
+  position:absolute;top:16px;right:15px;   /* 顶部内边距 16px + 半个按钮高 */
+  width:40px;height:40px;flex:none;
+  padding:0;border-radius:14px;        /* 小方块 + 圆润边角 */
+  display:none;place-items:center;
+  z-index:2;
+}
+/* 三点加大到 7px 半径，22×22 视口里清晰可辨 */
+.rail-fab svg{fill:currentColor;stroke:none;width:22px;height:22px}
+
+body[data-mode="mobile"] .rail-fab{
+  display:grid;                         /* 手机视图：顶栏显示「···」入口 */
+}
+body[data-mode="mobile"] .rail-fab[aria-expanded="true"]{
+  background:var(--gr-accent);color:#fff;
+  box-shadow:0 10px 22px -9px rgba(93,123,166,.7), inset 0 1px 0 rgba(255,255,255,.34);
+}
+/* 顶栏需要 relative 作为绝对定位锚点 */
+body[data-mode="mobile"] .top{position:relative}
+
+/* 主页面为展开的侧栏让位 */
+.wrap{position:relative;z-index:1;max-width:1420px;margin:0 auto;
+  padding-left:0;padding-right:0;
+  transition:padding-left .42s var(--ease),padding-right .44s var(--ease)}
+body:not(.rail-off) .wrap{padding-left:210px}
+/* 面板展开时把主内容推到面板左侧，避免顶栏按钮被盖住 */
+body.panel-open .wrap{padding-right:min(580px,92vw)}
+@media (min-width:1500px){
+  body:not(.rail-off) .wrap{padding-left:0}
+  .rail{left:max(14px,calc((100vw - 1420px)/2 - 200px))}
+}
+
+/* ═══════════════════════════════════════════════════════════
+   内容面板（属性 / 阈值）
+   ═══════════════════════════════════════════════════════════ */
+.panel{
+  position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);z-index:86;
+  transform:translateX(101%);transition:transform .44s var(--ease);
+  padding:clamp(22px,3vw,32px);overflow-y:auto;
+  border-radius:var(--r-xl) 0 0 var(--r-xl);
+  background:var(--glass);
+  -webkit-backdrop-filter:blur(26px) saturate(180%);
+  backdrop-filter:blur(26px) saturate(180%);
+  border-left:1px solid var(--glass-brd);
+  box-shadow:var(--sh-float);
+  scrollbar-width:thin;
+}
+.panel.open{transform:none}
+.panel::-webkit-scrollbar{width:7px}
+.panel::-webkit-scrollbar-thumb{background:rgba(160,175,199,.42);border-radius:99px}
+.panel__hd{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:22px}
+.panel__hd h2{font-size:16px;font-weight:600;letter-spacing:.05em}
+.panel__hd p{font-size:11.5px;color:var(--tx-3);margin-top:4px;line-height:1.6}
+
+/* ═══════════════════════════════════════════════════════════
+   状态胶囊（在线/离线合一） + 离线告警居中弹窗
+   —— 胶囊里放的是真实信息：在线状态 + 最后一次上报时间，
+      离线时点开可看完整说明。
+   ═══════════════════════════════════════════════════════════ */
+.off-btn{cursor:pointer;font-family:inherit}
+.off-btn.pill.on{cursor:default;border-color:transparent}
+.off-btn.pill.off{border:1px solid rgba(191,123,123,.3)}
+.off-mask{
+  position:fixed;inset:0;z-index:92;display:none;
+  align-items:center;justify-content:center;padding:clamp(14px,3vw,40px);
+  background:rgba(150,163,186,.34);
+  -webkit-backdrop-filter:blur(13px);backdrop-filter:blur(13px);
+}
+.off-mask.show{display:flex;animation:fade .3s var(--ease)}
+.off-modal{
+  width:min(460px,100%);border-radius:var(--r-xl);
+  padding:clamp(26px,3.4vw,36px);position:relative;text-align:center;
+  animation:pop .42s var(--ease);
+}
+.off-modal__ico{width:54px;height:54px;margin:0 auto 16px;border-radius:18px;
+  display:grid;place-items:center;background:rgba(191,123,123,.13)}
+.off-modal__ico svg{width:26px;height:26px;stroke:var(--bad);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.off-modal h3{font-size:18px;font-weight:600;margin-bottom:10px}
+.off-modal p{font-size:13.5px;line-height:1.78;color:var(--tx-2)}
+.off-x{
+  position:absolute;top:14px;right:14px;width:36px;height:36px;
+  border:none;border-radius:50%;cursor:pointer;display:grid;place-items:center;
+  background:rgba(255,255,255,.5);color:var(--tx-2);
+  box-shadow:var(--sh-raise-sm);transition:.22s var(--ease);
+}
+.off-x:hover{background:var(--glass-strong);transform:rotate(90deg)}
+.off-x svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
+/* 侧栏/面板浮层时的背景毛玻璃。
+   仅手机模式启用（见视图模式区块），电脑端保持原样不虚化。
+   z-index 79 < .rail 80，所以侧栏本体保持清晰可点。 */
+.rail-veil{display:none}
+body[data-mode="mobile"] .rail-veil{position:fixed;inset:0;z-index:79;
+  background:rgba(150,163,186,.28);
+  -webkit-backdrop-filter:blur(13px);backdrop-filter:blur(13px)}
+body[data-mode="mobile"] .rail-veil.show{display:block;animation:fade .3s var(--ease)}
+
+/* ═══════════════════════════════════════════════════════════
+   主视觉 / 概览
+   ═══════════════════════════════════════════════════════════ */
+.hero{
+  border-radius:var(--r-xl);
+  padding:clamp(22px,3vw,34px);
+  margin-bottom:clamp(16px,2vw,26px);
+  position:relative;overflow:hidden;
+}
+.hero::after{ /* 内侧微光 */
+  content:'';position:absolute;inset:1px;border-radius:calc(var(--r-xl) - 1px);pointer-events:none;
+  background:radial-gradient(560px 240px at 12% 0%,rgba(255,255,255,.62),transparent 62%);
+}
+.hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
+.hero-label{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--tx-3);font-weight:500}
+.hero-time{font-size:clamp(34px,6.2vw,58px);font-weight:200;letter-spacing:.02em;line-height:1.06;margin-top:9px;
+  font-variant-numeric:tabular-nums}
+.hero-time .sec{font-size:.44em;color:var(--tx-3);font-weight:300;margin-left:5px;letter-spacing:.06em}
+.hero-date{font-size:clamp(13.5px,1.6vw,16px);color:var(--tx-2);margin-top:9px;font-weight:400;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+
+.hero-metrics{display:flex;gap:clamp(20px,3.4vw,44px);flex-wrap:wrap;margin-top:clamp(22px,3vw,32px)}
+.metric{flex:1 1 148px;min-width:0}
+.metric-k{font-size:11.5px;color:var(--tx-3);letter-spacing:.11em;text-transform:uppercase;font-weight:500;
+  display:flex;align-items:center;gap:6px}
+.metric-v{font-size:clamp(27px,4.4vw,40px);font-weight:300;line-height:1.16;margin-top:7px;font-variant-numeric:tabular-nums;
+  display:flex;align-items:baseline;gap:3px}
+.metric-v .u{font-size:.36em;color:var(--tx-3);font-weight:400}
+.metric-s{font-size:11.5px;color:var(--tx-3);margin-top:4px}
+/* 上下限双值：两个数值同字号，下限用弱化色区分但仍清晰可读 */
+.metric-pair{display:flex;align-items:baseline;gap:6px;margin-top:7px;
+  font-size:clamp(21px,3vw,27px);font-weight:300;line-height:1.16;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.metric-pair .sep{font-size:.5em;color:var(--tx-3);font-weight:300}
+.metric-pair .lo{color:var(--tx-2)}
+.metric-pair .u{font-size:.44em;color:var(--tx-3);font-weight:400;margin-left:1px}
+
+/* 报警徽标 */
+.alarm-badge{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:7px 14px;border-radius:999px;font-size:12.5px;font-weight:500;
+  box-shadow:var(--sh-sink);margin-top:2px;
+}
+.alarm-0{color:#4d8a7c;background:rgba(95,158,160,.12)}
+.alarm-1,.alarm-2{color:#8a6437;background:rgba(201,154,106,.14)}
+.alarm-3{color:#8d5151;background:rgba(191,123,123,.15)}
+
+/* ═══════════════════════════════════════════════════════════
+   分区标题
+   ═══════════════════════════════════════════════════════════ */
+.sec-head{display:flex;align-items:center;gap:12px;margin:clamp(20px,2.6vw,30px) 4px 15px}
+.sec-head h2{font-size:14.5px;font-weight:600;letter-spacing:.06em;color:var(--tx-2)}
+.sec-head .rule{flex:1;height:1px;background:linear-gradient(90deg,rgba(160,175,199,.32),rgba(160,175,199,0))}
+.sec-head .tag{font-size:11px;color:var(--tx-3)}
+
+/* ═══════════════════════════════════════════════════════════
+   错落多列布局
+   ═══════════════════════════════════════════════════════════ */
+.mcols{display:flex;gap:clamp(14px,1.7vw,20px);align-items:flex-start}
+.mcol{flex:1 1 0;display:flex;flex-direction:column;gap:clamp(14px,1.7vw,20px);min-width:0}
+/* 栅格项默认 min-width:auto 会被子元素的 min-content 撑破，这里统一归零 */
+.grid > *,.thr-grid > *,.ctrl-grid > *,.mcols > *,.mcol > *{min-width:0}
+
+.card{
+  border-radius:var(--r-lg);
+  padding:clamp(19px,2.2vw,25px);
+  cursor:pointer;position:relative;overflow:hidden;
+  transition:transform .34s var(--ease),box-shadow .34s var(--ease);
+  display:flex;flex-direction:column;min-height:172px;
+}
+.card:hover{transform:translateY(-4px);box-shadow:12px 14px 32px rgba(160,175,199,.36),-9px -9px 24px rgba(255,255,255,.94), var(--sh-float)}
+.card:active{transform:translateY(-1px)}
+.card.clickable::after{
+  content:'';position:absolute;top:19px;right:19px;width:22px;height:22px;opacity:.34;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235d6b81' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M9 18l6-6-6-6'/%3E%3C/svg%3E") center/contain no-repeat;
+  transition:.3s var(--ease);
+}
+.card.clickable:hover::after{opacity:.7;transform:translateX(3px)}
+
+.c-top{display:flex;align-items:center;gap:11px;margin-bottom:auto}
+.c-ico{
+  width:40px;height:40px;flex:none;border-radius:13px;display:grid;place-items:center;
+  background:var(--gr-metal);box-shadow:var(--sh-raise-sm);
+}
+.c-ico svg{width:19px;height:19px;stroke:var(--accent);fill:none;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round}
+.c-name{font-size:13px;font-weight:500;letter-spacing:.02em}
+.c-id{font-size:10.5px;color:var(--tx-3);margin-top:2px}
+
+.c-val{
+  font-size:clamp(29px,4vw,37px);font-weight:300;line-height:1.1;margin-top:15px;
+  font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:4px;
+  transition:opacity .3s;
+}
+.c-val .u{font-size:.36em;color:var(--tx-3);font-weight:400}
+.c-val.txt{font-size:clamp(18px,2.5vw,23px);font-weight:400;letter-spacing:.01em}
+.c-val.na{font-size:clamp(16px,2vw,19px);color:var(--tx-3);font-weight:400}
+.c-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:13px;
+  padding-top:12px;border-top:1px solid rgba(160,175,199,.15);font-size:11px;color:var(--tx-3)}
+.rw{font-size:10px;padding:3px 8px;border-radius:999px;background:rgba(125,143,184,.13);color:var(--info);font-weight:500}
+
+/* 迷你走势 */
+.spark{height:34px;margin-top:11px;width:100%;display:block}
+
+/* 卡片内微光 */
+.card::before{
+  content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(300px 120px at 100% 0%,rgba(255,255,255,.5),transparent 60%);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   远程控制
+   ═══════════════════════════════════════════════════════════ */
+/* 远程控制：整卡即按钮 —— 大图标 + 大字，点按下发 1 */
+.ctrl-grid{display:grid;gap:clamp(14px,1.7vw,20px);grid-template-columns:repeat(auto-fit,minmax(158px,1fr));
+  margin-top:clamp(20px,2.6vw,30px)}
+.ctrl{
+  border-radius:var(--r-lg);padding:clamp(20px,2.3vw,26px) clamp(14px,1.6vw,18px);
+  display:flex;flex-direction:column;align-items:center;gap:14px;
+  cursor:pointer;border:none;width:100%;font-family:inherit;
+  transition:transform .3s var(--ease),box-shadow .3s var(--ease);
+  -webkit-user-select:none;user-select:none;
+}
+.ctrl:hover{transform:translateY(-4px);
+  box-shadow:12px 14px 30px rgba(160,175,199,.36),-9px -9px 22px rgba(255,255,255,.94),var(--sh-float)}
+.ctrl:active{transform:translateY(-1px);box-shadow:var(--sh-sink)}
+.ctrl:focus-visible{outline:none;box-shadow:var(--sh-sink),0 0 0 2px rgba(109,139,181,.42)}
+.ctrl .c-ico{
+  width:62px;height:62px;border-radius:21px;display:grid;place-items:center;
+  background:var(--gr-accent);
+  box-shadow:0 10px 22px -8px rgba(93,123,166,.62), inset 0 1px 0 rgba(255,255,255,.34);
+  transition:transform .3s var(--ease),box-shadow .3s var(--ease);
+}
+.ctrl .c-ico svg{width:29px;height:29px;stroke:#fff;stroke-width:1.85}
+.ctrl:hover .c-ico{transform:scale(1.07)}
+.ctrl:active .c-ico{transform:scale(.96)}
+.ctrl-name{font-size:clamp(15px,1.5vw,17px);font-weight:600;letter-spacing:.02em}
+/* 已执行：整卡变绿并短暂停留 1.6s */
+.ctrl.done{background:linear-gradient(135deg,rgba(127,176,164,.16),rgba(95,158,160,.20));
+  box-shadow:inset 0 0 0 1px rgba(95,158,160,.42), var(--sh-raise)}
+.ctrl.done .c-ico{background:linear-gradient(135deg,#7fb0a4 0%,#5f9ea0 100%);
+  box-shadow:0 10px 22px -8px rgba(95,158,160,.62), inset 0 1px 0 rgba(255,255,255,.32)}
+.ctrl.done .ctrl-name{color:#4d8a7c}
+
+/* 阈值设置 */
+.thr-grid{display:grid;gap:clamp(14px,1.7vw,20px);grid-template-columns:repeat(auto-fit,minmax(238px,1fr))}
+.thr{border-radius:var(--r-lg);padding:clamp(19px,2.2vw,24px);display:flex;flex-direction:column;gap:13px;min-width:0}
+.thr-h{display:flex;justify-content:space-between;align-items:center;gap:10px;min-width:0}
+.thr-name{font-size:13px;font-weight:500}
+.thr-cur{font-size:11.5px;color:var(--tx-3)}
+.thr-cur b{color:var(--tx-1);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
+/* 精确输入：去掉 -/+ 步进按钮，输入框 + 右侧确认圆点。
+   步长 0.5℃ 在 180℃ 量程上是 360 档，± 按钮容易误触且占宽度。 */
+.stepper{display:flex;align-items:center;gap:9px;min-width:0}
+.sval{
+  flex:1 1 0;min-width:0;width:100%;padding:11px 8px;border-radius:var(--r-sm);border:none;text-align:center;
+  font-family:inherit;font-size:17px;font-weight:500;color:var(--tx-1);
+  background:rgba(255,255,255,.28);box-shadow:var(--sh-sink);
+  -moz-appearance:textfield;
+}
+.sval:focus{outline:none;box-shadow:var(--sh-sink),0 0 0 2px rgba(109,139,181,.42)}
+.sval::-webkit-outer-spin-button,.sval::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+/* 确认/取消圆点：内含√ 与 × 图标常显。
+   未修改时图标浅灰（可点但不鼓励），已修改时确认点变蓝底白勾（提示可提交）。
+   取消点恒为灰色 —— 点开却不想改时用它收回，不下发任何指令。 */
+.sok,.scancel{
+  width:38px;height:38px;flex:0 0 38px;border-radius:50%;border:none;cursor:pointer;
+  display:grid;place-items:center;background:var(--glass-strong);box-shadow:var(--sh-sink);
+  color:var(--tx-3);transition:.2s var(--ease);
+}
+.sok svg,.scancel svg{
+  width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2.6;
+  stroke-linecap:round;stroke-linejoin:round;transition:.2s var(--ease);
+}
+.sok:hover,.scancel:hover{color:var(--tx-1);transform:scale(1.06)}
+.sok:active,.scancel:active{transform:scale(.94)}
+.sok[data-dirty="1"]{color:#fff;background:#6d8bb5;box-shadow:var(--sh-raise)}
+.thr-scale{display:flex;justify-content:space-between;font-size:10.5px;color:var(--tx-3);margin-top:-3px}
+
+/* 大字当前值（点按展开精确输入） */
+.thr-big{
+  display:flex;align-items:baseline;gap:8px;width:100%;
+  padding:14px 16px;border:none;border-radius:var(--r-md);cursor:pointer;
+  font-family:inherit;color:var(--tx-1);text-align:left;
+  background:rgba(255,255,255,.3);box-shadow:var(--sh-sink);
+  transition:.24s var(--ease);
+}
+.thr-big:hover{box-shadow:var(--sh-sink),0 0 0 2px rgba(109,139,181,.34)}
+.thr-big b{font-size:clamp(30px,4.6vw,40px);font-weight:200;line-height:1;font-variant-numeric:tabular-nums}
+.thr-big__u{font-size:.4em;color:var(--tx-2);font-weight:500;letter-spacing:.02em}
+.thr-big__pen{width:15px;height:15px;margin-left:auto;align-self:center;stroke:var(--tx-3);
+  fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;opacity:.6}
+
+/* 横向滑轨 */
+.sl{padding:2px 0 0}
+.sl__track{position:relative;height:34px;border-radius:99px;cursor:pointer;
+  touch-action:none;                 /* 移动端拖动必需，否则被页面滚动抢走 */
+  background:var(--sh-sink);overflow:visible}
+.sl__fill{position:absolute;left:0;top:0;bottom:0;border-radius:99px;width:0;
+  background:var(--gr-accent);opacity:.5;transition:width .12s linear}
+.sl__knob{
+  position:absolute;top:50%;left:0;width:26px;height:26px;margin:-13px 0 0 -13px;
+  border-radius:50%;background:var(--glass-strong);pointer-events:none;
+  border:1px solid rgba(255,255,255,.86);
+  box-shadow:0 5px 14px -4px rgba(93,123,166,.62),var(--sh-raise-sm);
+  transition:transform .18s var(--ease);
+}
+.thr.dragging .sl__knob{transform:scale(1.22)}
+.thr.dragging .sl__fill{transition:none;opacity:.72}
+.thr-exact{margin-top:4px}
+
+/* ═══════════════════════════════════════════════════════════
+   历史数据弹窗
+   ═══════════════════════════════════════════════════════════ */
+.mask{
+  position:fixed;inset:0;z-index:90;display:none;
+  align-items:center;justify-content:center;padding:clamp(12px,2.4vw,34px);
+  background:rgba(150,163,186,.30);
+  -webkit-backdrop-filter:blur(13px);backdrop-filter:blur(13px);
+}
+.mask.show{display:flex;animation:fade .3s var(--ease)}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.modal{
+  width:min(940px,100%);max-height:90vh;overflow-y:auto;
+  border-radius:var(--r-xl);padding:clamp(22px,3vw,34px);
+  animation:pop .42s var(--ease);
+  scrollbar-width:thin;
+}
+@keyframes pop{from{transform:translateY(22px) scale(.975);opacity:0}to{transform:none;opacity:1}}
+.modal::-webkit-scrollbar{width:7px}
+.modal::-webkit-scrollbar-thumb{background:rgba(160,175,199,.42);border-radius:99px}
+
+.m-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.m-title{display:flex;align-items:center;gap:13px}
+.m-title h3{font-size:19px;font-weight:600}
+.m-title p{font-size:11.5px;color:var(--tx-3);margin-top:3px}
+.m-stats{display:flex;gap:clamp(16px,2.6vw,32px);flex-wrap:wrap;margin-bottom:20px}
+.m-stat-k{font-size:10.5px;color:var(--tx-3);letter-spacing:.1em;text-transform:uppercase}
+.m-stat-v{font-size:20px;font-weight:400;margin-top:4px;font-variant-numeric:tabular-nums}
+
+.seg{display:inline-flex;gap:4px;padding:5px;border-radius:999px;background:rgba(255,255,255,.3);box-shadow:var(--sh-sink)}
+.seg button{
+  padding:8px 15px;border:none;border-radius:999px;cursor:pointer;background:transparent;
+  font-family:inherit;font-size:12.5px;font-weight:500;color:var(--tx-2);transition:.24s var(--ease);
+}
+.seg button.on{background:var(--glass-strong);box-shadow:var(--sh-raise-sm);color:var(--tx-1)}
+
+.chart-box{
+  border-radius:var(--r-lg);padding:18px 16px 10px;margin-bottom:18px;
+  background:rgba(255,255,255,.28);box-shadow:var(--sh-sink);
+}
+/* 图表主体 + 右侧纵轴缩放条并排；canvas 宽度由 flex 收缩，不写死像素 */
+.chart-row{display:flex;align-items:stretch;gap:10px}
+.chart-main{flex:1 1 auto;min-width:0}
+.chart-box canvas{width:100%;display:block}
+
+/* ── 纵轴缩放条 ──
+   上滑= 放大（曲线更平缓，跨度小）
+   下滑 = 缩小（曲线更尖锐，跨度大）
+   锚定数据中值，只改跨度，避免拖动时整条曲线乱窜。 */
+.zoomer{
+  flex:none;width:58px;display:flex;flex-direction:column;align-items:center;
+  gap:6px;padding:2px 0;user-select:none;-webkit-user-select:none;
+}
+.zoomer__top{
+  font-size:10px;color:var(--tx-3);text-align:center;line-height:1.25;
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.zoomer__top b{display:block;font-size:11px;font-weight:600;color:var(--tx-2)}
+.zoomer__trk{
+  position:relative;flex:1 1 auto;width:100%;min-height:96px;cursor:grab;
+  touch-action:none;border-radius:999px;
+  background:rgba(125,143,184,.14);box-shadow:var(--sh-sink);
+}
+.zoomer__trk:active{cursor:grabbing}
+/* 轨道纵向填充：从中心向上，表示"更平缓"方向 */
+.zoomer__fill{
+  position:absolute;left:50%;transform:translateX(-50%);bottom:50%;
+  width:6px;border-radius:999px;
+  background:linear-gradient(180deg,rgba(109,139,181,.55),rgba(109,139,181,.22));
+}
+.zoomer__knob{
+  position:absolute;left:50%;width:26px;height:26px;border-radius:50%;
+  transform:translate(-50%,50%);
+  background:var(--glass-strong);box-shadow:var(--sh-raise);
+  border:1.5px solid rgba(109,139,181,.55);
+  display:grid;place-items:center;
+  font-size:10.5px;font-weight:600;color:var(--tx-2);
+  font-variant-numeric:tabular-nums;
+}
+.zoomer__knob::after{
+  content:'';position:absolute;inset:5px;border-radius:50%;
+  background:rgba(109,139,181,.14);
+}
+/* 默认档（×4.2）中线标记 —— 与 .zoomer__fill 的生长原点对齐 */
+.zoomer__auto{
+  position:absolute;left:50%;transform:translateX(-50%);top:50%;
+  width:20px;height:1.5px;background:rgba(109,139,181,.5);border-radius:2px;
+  pointer-events:none;
+}
+.zoomer__hint{
+  font-size:9.5px;color:var(--tx-3);letter-spacing:.03em;white-space:nowrap;
+}
+.zoomer__auto-btn{
+  font:inherit;font-family:inherit;font-size:10px;line-height:1;
+  padding:5px 7px;border:none;border-radius:999px;cursor:pointer;
+  background:rgba(125,143,184,.13);color:var(--tx-2);font-weight:500;
+  transition:.22s var(--ease);
+}
+.zoomer__auto-btn:hover{background:rgba(109,139,181,.2);color:var(--tx-1)}
+.zoomer__auto-btn[aria-pressed="true"]{
+  background:rgba(109,139,181,.24);color:var(--tx-1);box-shadow:var(--sh-raise-sm);
+}
+.c-empty{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;
+  padding:46px 20px;color:var(--tx-3);font-size:13px;text-align:center;line-height:1.7;
+}
+.c-empty svg{width:34px;height:34px;stroke:var(--off);fill:none;stroke-width:1.5;opacity:.7}
+
+.tbl-wrap{overflow-x:auto;border-radius:var(--r-md);box-shadow:var(--sh-sink);background:rgba(255,255,255,.24)}
+table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:340px}
+th{
+  text-align:left;padding:12px 16px;font-weight:500;color:var(--tx-3);font-size:10.5px;
+  letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;
+  position:sticky;top:0;background:rgba(240,244,250,.96);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+}
+td{padding:11px 16px;border-top:1px solid rgba(160,175,199,.13);font-variant-numeric:tabular-nums;white-space:nowrap}
+tbody tr{transition:background .2s}
+tbody tr:hover{background:rgba(255,255,255,.5)}
+td.v{font-weight:500}
+
+.m-empty{text-align:center;padding:52px 22px;color:var(--tx-3)}
+.m-empty svg{width:46px;height:46px;stroke:var(--off);fill:none;stroke-width:1.3;margin-bottom:15px;opacity:.65}
+.m-empty p{font-size:13.5px;line-height:1.75;max-width:400px;margin:0 auto}
+
+/* ═══════════════════════════════════════════════════════════
+   设置面板
+   ═══════════════════════════════════════════════════════════ */
+.drawer{
+  position:fixed;top:0;right:0;bottom:0;width:min(430px,100%);z-index:95;
+  transform:translateX(101%);transition:transform .44s var(--ease);
+  padding:clamp(22px,3vw,32px);overflow-y:auto;border-radius:var(--r-xl) 0 0 var(--r-xl);
+}
+.drawer.show{transform:none}
+.dr-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+.dr-head h3{font-size:17px;font-weight:600}
+.fld{margin-bottom:17px}
+.fld label{display:block;font-size:11.5px;color:var(--tx-2);margin-bottom:7px;font-weight:500;letter-spacing:.04em}
+.fld input{
+  width:100%;padding:12px 14px;border-radius:var(--r-sm);border:none;
+  font-family:inherit;font-size:13px;color:var(--tx-1);
+  background:rgba(255,255,255,.3);box-shadow:var(--sh-sink);
+}
+.fld input:focus{outline:none;box-shadow:var(--sh-sink),0 0 0 2px rgba(109,139,181,.42)}
+.hint{font-size:11px;color:var(--tx-3);margin-top:7px;line-height:1.65}
+
+/* Toast */
+.toasts{position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  z-index:120;display:flex;flex-direction:column;gap:10px;align-items:center;pointer-events:none;width:max-content;max-width:92vw}
+.toast{
+  display:flex;align-items:center;gap:11px;
+  padding:14px 22px;border-radius:999px;font-size:13.5px;font-weight:500;
+  background:var(--glass-strong);
+  -webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%);
+  box-shadow:var(--sh-raise),var(--sh-float);
+  animation:tin .4s var(--ease);max-width:100%;
+}
+@keyframes tin{from{transform:translateY(24px) scale(.94);opacity:0}to{transform:none;opacity:1}}
+.toast.out{animation:tout .34s var(--ease) forwards}
+@keyframes tout{to{transform:translateY(-12px) scale(.96);opacity:0}}
+.toast svg{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.toast.ok{color:#4d8a7c}
+.toast.info{color:var(--info)}
+.toast.err{color:#8d5151}
+
+@keyframes fadeUp{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+
+.foot{text-align:center;padding:26px 10px 6px;font-size:11px;color:var(--tx-3);line-height:1.85}
+
+/* ═══════════════════════════════════════════════════════════
+   视图模式（手机 / 电脑）
+   —— 由 body[data-mode] 驱动，而非视口宽度。这样侧栏下方的
+      手动切换在宽屏上也能真正预览手机版布局。
+      JS 解析：手动选择优先，否则按视口宽度自动判定。
+   ═══════════════════════════════════════════════════════════ */
+body[data-mode="mobile"]{padding:13px;padding-top:calc(13px + env(safe-area-inset-top))}
+body[data-mode="mobile"] .top{padding:17px;border-radius:var(--r-lg);gap:14px}
+body[data-mode="mobile"] .logo{width:44px;height:44px;border-radius:14px}
+body[data-mode="mobile"] .logo svg{width:23px;height:23px}
+body[data-mode="mobile"] .brand h1{font-size:16px;white-space:normal}
+body[data-mode="mobile"] .top-r{width:100%;justify-content:space-between}
+body[data-mode="mobile"] .pill{flex:1;justify-content:center;padding:10px 13px}
+body[data-mode="mobile"] .hero{padding:21px 19px;border-radius:var(--r-lg)}
+body[data-mode="mobile"] .hero-metrics{gap:18px}
+body[data-mode="mobile"] .metric{flex:1 1 calc(50% - 9px)}
+body[data-mode="mobile"] .metric-v{font-size:26px}
+body[data-mode="mobile"] .metric-pair{font-size:22px;gap:5px}
+body[data-mode="mobile"] .mcols{flex-direction:row;gap:10px}
+body[data-mode="mobile"] .mcol{gap:13px}
+body[data-mode="mobile"] .thr-grid{grid-template-columns:1fr;gap:13px}
+body[data-mode="mobile"] .ctrl-grid{grid-template-columns:repeat(3,1fr);gap:10px}
+body[data-mode="mobile"] .ctrl{padding:16px 6px;gap:11px;border-radius:var(--r-md)}
+body[data-mode="mobile"] .ctrl .c-ico{width:46px;height:46px;border-radius:15px}
+body[data-mode="mobile"] .ctrl .c-ico svg{width:22px;height:22px}
+body[data-mode="mobile"] .ctrl-name{font-size:13.5px}
+body[data-mode="mobile"] .thr,body[data-mode="mobile"] .ctrl{min-width:0}
+body[data-mode="mobile"] .thr-big b{font-size:30px}
+body[data-mode="mobile"] .sl__track{height:44px}
+body[data-mode="mobile"] .sl__knob{width:30px;height:30px;margin:-15px 0 0 -15px}
+body[data-mode="mobile"] .thr-exact .sok,body[data-mode="mobile"] .thr-exact .scancel{width:44px;height:44px;flex:0 0 44px}
+body[data-mode="mobile"] .stepper{gap:8px}
+body[data-mode="mobile"] .sval{font-size:16px;padding:10px 6px}
+
+/* 手机视图：不再保留左侧固定槽位，左边空间全部还给信息。
+   导航改为挂在顶栏「···」按钮下方，展开方向为「右上 → 左下」。 */
+body[data-mode="mobile"] .wrap,
+body[data-mode="mobile"]:not(.rail-off) .wrap{padding-left:0}
+body[data-mode="mobile"].panel-open .wrap{padding-right:0}
+
+/* rail 变成顶栏下方的浮层：锚定到「···」按钮附近，默认隐藏 */
+body[data-mode="mobile"] .rail{
+  left:auto;right:14px;
+  top:calc(74px + env(safe-area-inset-top));bottom:auto;
+  transform:none;                        /* 覆盖桌面 translateY(-50%) */
+  transform-origin:top right;            /* 从右上角展开 */
+  flex-direction:column;align-items:stretch;
+  width:186px;max-width:calc(100vw - 28px);
+  padding:8px;border-radius:var(--r-xl);
+  max-height:calc(100dvh - 96px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y:auto;overscroll-behavior:contain;
+  /* 收起态：右上角锚点缩放淡出，展开时反向 */
+  opacity:0;visibility:hidden;
+  transform:translateY(-10px) scale(.92);
+  transition:opacity .26s var(--ease),transform .26s var(--ease),visibility .26s;
+}
+body[data-mode="mobile"]:not(.rail-off) .rail{
+  opacity:1;visibility:visible;
+  transform:translateY(0) scale(1);
+}
+/* 浮层形态下 rail-off 只表示"菜单关闭"，不表示"折叠成图标条"——
+   展开时必须显示文字标签，故覆盖桌面那几条隐藏规则（它们同特异性、写在后面即可生效）。 */
+body[data-mode="mobile"] .rail-dot__t,
+body[data-mode="mobile"] .rail-seg__t{opacity:1;width:auto;pointer-events:auto}
+body[data-mode="mobile"] .rail-dot{justify-content:flex-start;padding:10px 9px;gap:11px}
+body[data-mode="mobile"] .rail-seg{flex-direction:row;gap:4px}
+body[data-mode="mobile"] .rail-seg__b{padding:8px 4px}
+body[data-mode="mobile"] .rail{width:186px;padding:8px}
+body[data-mode="mobile"] .rail-dot{padding:10px 9px}
+body[data-mode="mobile"] .rail-tg{
+  height:34px;
+  /* 折叠箭头在浮层形态下已无意义（收起由「···」完成），隐藏它 */
+  display:none;
+}
+body[data-mode="mobile"] .panel{
+  width:100%;max-height:82vh;top:auto;bottom:0;z-index:82;
+  border-radius:var(--r-xl) var(--r-xl) 0 0;
+  transform:translateY(101%);
+}
+body[data-mode="mobile"] .panel.open{transform:none}
+body[data-mode="mobile"] .toasts{bottom:calc(84px + env(safe-area-inset-bottom))}
+body[data-mode="mobile"] .off-mask{padding:16px}
+body[data-mode="mobile"] .off-modal{border-radius:var(--r-lg)}
+
+body[data-mode="mobile"] .card{min-height:0;padding:19px}
+body[data-mode="mobile"] .card::after{display:none}
+body[data-mode="mobile"] .c-val:not(.txt):not(.na){font-size:31px}
+body[data-mode="mobile"] .card::before{display:none}
+/* 双列下 .c-top 预算不足，overflow:hidden 会裁掉英文标识 */
+body[data-mode="mobile"] .card .c-id{display:none}
+/* 窄屏图表：缩放条压窄，旋钮缩到 22px 保证拇指可拖 */
+body[data-mode="mobile"] .chart-row{gap:7px}
+body[data-mode="mobile"] .zoomer{width:46px}
+body[data-mode="mobile"] .zoomer__knob{width:22px;height:22px;font-size:9.5px}
+body[data-mode="mobile"] .modal,body[data-mode="mobile"] .drawer{border-radius:var(--r-lg)}
+body[data-mode="mobile"] .drawer{width:100%;border-radius:0}
+body[data-mode="mobile"] .mask{padding:0;align-items:flex-end}
+body[data-mode="mobile"] .modal{max-height:94vh;width:100%;border-radius:var(--r-lg) var(--r-lg) 0 0;padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+body[data-mode="mobile"] .seg{width:100%;overflow-x:auto;justify-content:flex-start;scrollbar-width:none}
+body[data-mode="mobile"] .seg::-webkit-scrollbar{display:none}
+body[data-mode="mobile"] .seg button{flex:1;min-width:60px;padding:8px 11px}
+body[data-mode="mobile"] .m-stats{gap:16px}
+/* 顶栏右侧多了「···」：收紧间距保证一行放得下。
+   fab 是绝对定位（脱离 flex 流），故 .brand 需预留右侧空间防标题被压住。 */
+body[data-mode="mobile"] .top{gap:12px;padding:16px 15px}
+body[data-mode="mobile"] .top-r{gap:8px}
+body[data-mode="mobile"] .brand{padding-right:50px}
+
+/* 极小屏补充（真正的小屏设备，与模式无关） */
+@media (max-width:380px){
+  .metric{flex:1 1 100%}
+}
+/* 兜底：视口太窄时若强制"电脑视图"，桌面布局（面板 560px 侧开等）会撑破。
+   视口小于桌面可用宽度时，面板/双列等切回手机版式，
+   **并且 rail 也从左侧常驻竖条切成「···」浮层** —— 172px 竖条在窄屏会压住内容。 */
+@media (max-width:720px){
+  body[data-mode="desktop"] .panel{
+    width:100%;max-height:82vh;top:auto;bottom:0;z-index:82;
+    border-radius:var(--r-xl) var(--r-xl) 0 0;
+    transform:translateY(101%);
+  }
+  body[data-mode="desktop"] .panel.open{transform:none}
+  body[data-mode="desktop"] .mcols{flex-direction:row;gap:10px}
+  body[data-mode="desktop"] .thr-grid{grid-template-columns:1fr;gap:13px}
+  /* 窄屏下桌面模式同样放不下 172px 竖条，把 rail 也切到浮层形态，
+     并放开左槽 —— 顺带把「···」按钮显示出来（否则没有入口）。 */
+  body[data-mode="desktop"] .rail{
+    left:auto;right:14px;top:74px;bottom:auto;transform:none;
+    transform-origin:top right;width:186px;max-width:calc(100vw - 28px);
+    opacity:0;visibility:hidden;transform:translateY(-10px) scale(.92);
+    transition:opacity .26s var(--ease),transform .26s var(--ease),visibility .26s;
+  }
+  body[data-mode="desktop"]:not(.rail-off) .rail{opacity:1;visibility:visible;transform:none}
+  body[data-mode="desktop"] .wrap,
+  body[data-mode="desktop"]:not(.rail-off) .wrap{padding-left:0}
+  body[data-mode="desktop"] .rail-dot__t,
+  body[data-mode="desktop"] .rail-seg__t{opacity:1;width:auto;pointer-events:auto}
+  body[data-mode="desktop"] .rail-dot{justify-content:flex-start;padding:10px 9px;gap:11px}
+  body[data-mode="desktop"] .rail-seg{flex-direction:row;gap:4px}
+  body[data-mode="desktop"] .rail-seg__b{padding:8px 4px}
+  body[data-mode="desktop"] .rail{width:186px;padding:8px}
+  body[data-mode="desktop"] .rail-fab{display:grid}
+  body[data-mode="desktop"] .top{position:relative}
+  body[data-mode="desktop"] .brand{padding-right:50px}
+  body[data-mode="desktop"] .rail-fab[aria-expanded="true"]{
+    background:var(--gr-accent);color:#fff;
+    box-shadow:0 10px 22px -9px rgba(93,123,166,.7), inset 0 1px 0 rgba(255,255,255,.34);
+  }
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ 侧栏点导航（可折叠） ══ -->
+<nav class="rail" id="rail" aria-label="分组导航">
+  <button class="rail-tg" id="railTg" aria-label="折叠导航" aria-expanded="true">
+    <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+  </button>
+  <button class="rail-dot is-on" data-grp="main">
+    <span class="rail-dot__i"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="17" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg></span>
+    <span class="rail-dot__t">概览</span>
+  </button>
+  <button class="rail-dot" data-grp="props">
+    <span class="rail-dot__i"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>
+    <span class="rail-dot__t">物模型属性</span>
+  </button>
+  <button class="rail-dot" data-grp="thr">
+    <span class="rail-dot__i"><svg viewBox="0 0 24 24"><path d="M4 8h9M19 8h1M4 16h3M13 16h7"/><circle cx="15.5" cy="8" r="2.4"/><circle cx="9.5" cy="16" r="2.4"/></svg></span>
+    <span class="rail-dot__t">阈值设置</span>
+  </button>
+
+  <!-- 视图模式切换：手机 / 电脑 -->
+  <div class="rail-seg" id="railSeg" role="group" aria-label="视图模式">
+    <button class="rail-seg__b" data-mode="mobile" title="手机视图">
+      <svg viewBox="0 0 24 24"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg>
+      <span class="rail-seg__t">手机</span>
+    </button>
+    <button class="rail-seg__b" data-mode="desktop" title="电脑视图">
+      <svg viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      <span class="rail-seg__t">电脑</span>
+    </button>
+  </div>
+</nav>
+
+<div class="rail-veil" id="railVeil" aria-hidden="true"></div>
+
+<div class="wrap">
+
+  <!-- ══ 顶栏 ══ -->
+  <header class="top glass">
+    <div class="brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="17" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4M8.5 14.5h2M13.5 14.5h2M8.5 17.5h2"/></svg>
+      </div>
+      <h1>电子万年历 · 云控台</h1>
+    </div>
+    <div class="top-r">
+      <button class="pill off off-btn" id="offBtn" aria-haspopup="dialog">
+        <span class="dot"></span><span id="offTx">连接中</span>
+      </button>
+      <button class="btn btn-primary" id="btnRef">
+        <svg id="refIco" viewBox="0 0 24 24"><path d="M21 2.5v6h-6"/><path d="M3 12a9 9 0 0115.5-6.4L21 8.5"/><path d="M3 21.5v-6h6"/><path d="M21 12a9 9 0 01-15.5 6.4L3 15.5"/></svg>
+        <span id="refTx">刷新</span>
+      </button>
+      <!-- 手机视图的导航入口：替代常驻左侧竖条，把左边空间还给信息 -->
+      <button class="btn rail-fab" id="railFab" aria-label="打开导航" aria-haspopup="true" aria-expanded="false">
+        <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.4"/><circle cx="12" cy="12" r="2.4"/><circle cx="19" cy="12" r="2.4"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ══ 离线告警（居中弹窗，由顶栏 #offBtn 触发） ══ -->
+  <div class="off-mask" id="offMask">
+    <div class="off-modal glass" role="alertdialog" aria-modal="true" aria-labelledby="offT">
+      <button class="off-x" id="offX" aria-label="关闭">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+      <span class="off-modal__ico"><svg viewBox="0 0 24 24"><path d="M12 8v5M12 16.5v.01"/><circle cx="12" cy="12" r="9.5"/></svg></span>
+      <h3 id="offT">设备当前离线</h3>
+      <p id="offB"></p>
+    </div>
+  </div>
+
+  <!-- ══ 概览 ══ -->
+  <section class="hero glass">
+    <div class="hero-top">
+      <div>
+        <div class="hero-label">设备时间</div>
+        <div class="hero-time" id="hTime">--:--<span class="sec">--</span></div>
+        <div class="hero-date">
+          <span id="hWeek">星期 --</span>
+          <span style="color:var(--tx-3)">·</span>
+          <span id="hDate">----.--.--</span>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div class="hero-label">报警状态</div>
+        <div id="hAlarm" style="margin-top:9px"><span class="alarm-badge alarm-0">正常</span></div>
+      </div>
+    </div>
+
+    <div class="hero-metrics">
+      <div class="metric">
+        <div class="metric-k">温度</div>
+        <div class="metric-v"><span id="hTemp">--</span><span class="u">℃</span></div>
+        <div class="metric-s" id="hTempS">DS18B20</div>
+      </div>
+      <div class="metric">
+        <div class="metric-k">湿度</div>
+        <div class="metric-v"><span id="hHumi">--</span><span class="u">%RH</span></div>
+        <div class="metric-s" id="hHumiS">DHT11</div>
+      </div>
+      <div class="metric">
+        <div class="metric-k">Wi-Fi 信号</div>
+        <div class="metric-v"><span id="hRssi">--</span><span class="u">dBm</span></div>
+        <div class="metric-s" id="hRssiS">ESP8266</div>
+      </div>
+      <div class="metric">
+        <div class="metric-k">温控阈值</div>
+        <div class="metric-pair"><span id="hTH">--</span><span class="sep">/</span><span class="lo" id="hTL">--</span><span class="u">℃</span></div>
+        <div class="metric-s">上限 / 下限</div>
+      </div>
+      <div class="metric">
+        <div class="metric-k">湿控阈值</div>
+        <div class="metric-pair"><span id="hHH">--</span><span class="sep">/</span><span class="lo" id="hHL">--</span><span class="u">%</span></div>
+        <div class="metric-s">上限 / 下限</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 物模型属性 / 阈值设置 已移入侧栏面板，见文末 #panel ══ -->
+
+  <!-- ══ 远程控制（整卡即按钮，点按即下发 1）══ -->
+  <div class="ctrl-grid" id="ctrlGrid"></div>
+
+  <p class="foot">
+    数据来源：OneNET 开放平台 by MQTT<br>
+    控制链路：Web → OneNET → ESP8266 → 51单片机
+  </p>
+</div>
+
+<!-- ══ 侧栏内容面板（物模型属性 / 阈值设置） ══ -->
+<aside class="panel" id="panel" aria-label="属性面板">
+  <div class="panel__hd">
+    <div>
+      <h2 id="panelTitle">物模型属性</h2>
+      <p id="panelSub">点击任意属性查看历史曲线</p>
+    </div>
+    <button class="btn btn-icon" id="panelX" aria-label="关闭面板">
+      <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+
+  <section class="panel__sec" id="panelProps">
+    <div class="mcols" id="grid"><!-- JS 按列注入 .mcol --></div>
+  </section>
+
+  <section class="panel__sec" id="panelThr" hidden>
+    <div class="thr-grid" id="thrGrid"></div>
+  </section>
+</aside>
+
+<!-- ══ 历史数据弹窗 ══ -->
+<div class="mask" id="mask">
+  <div class="modal glass" role="dialog" aria-modal="true">
+    <div class="m-head">
+      <div class="m-title">
+        <div class="c-ico" id="mIco"></div>
+        <div>
+          <h3 id="mName">—</h3>
+          <p><span class="mono" id="mId">—</span> · <span id="mType">—</span></p>
+        </div>
+      </div>
+      <button class="btn btn-icon" id="mClose" aria-label="关闭">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="m-stats" id="mStats"></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px">
+      <div class="seg" id="seg">
+        <button data-h="1" class="on">1 小时</button>
+        <button data-h="6">6 小时</button>
+        <button data-h="24">24 小时</button>
+        <button data-h="168">7 天</button>
+      </div>
+      <div id="mRange" style="font-size:11.5px;color:var(--tx-3)"></div>
+    </div>
+
+    <div class="chart-box" id="chartBox"></div>
+    <div id="mBody"></div>
+  </div>
+</div>
+
+<!-- ══ 设置抽屉 ══ -->
+<div class="mask" id="maskDr" style="align-items:stretch;justify-content:flex-end">
+  <aside class="drawer glass" role="dialog" aria-modal="true">
+    <div class="dr-head">
+      <h3>连接设置</h3>
+      <button class="btn btn-icon" id="drClose" aria-label="关闭">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="fld">
+      <label>产品 ID</label>
+      <input id="fPid" placeholder="product_id" spellcheck="false" autocomplete="off">
+    </div>
+    <div class="fld">
+      <label>设备名称</label>
+      <input id="fDev" placeholder="device_name" spellcheck="false" autocomplete="off">
+    </div>
+    <div class="fld">
+      <label>用户级 Token</label>
+      <textarea id="fTok" rows="5" placeholder="version=2018-10-31&amp;res=userid%2F..." spellcheck="false"
+        style="width:100%;padding:12px 14px;border-radius:var(--r-sm);border:none;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;color:var(--tx-1);background:rgba(255,255,255,.3);box-shadow:var(--sh-sink);resize:vertical;line-height:1.6"></textarea>
+      <div class="hint">
+        在 OneNET 开发者中心「工具 → API 鉴权」生成，<b>res</b> 为 <code>userid/…</code> 形式。<br>
+        也可直接粘贴设备级 Token（res 含 <code>products/…/devices/…</code>）—— 该 Token 具备读权限，写入需用户级 Token。
+      </div>
+    </div>
+
+    <div style="display:flex;gap:11px;flex-wrap:wrap">
+      <button class="btn btn-primary" id="drSave" style="flex:1;min-width:130px">保存并连接</button>
+      <button class="btn" id="drReset">恢复默认</button>
+    </div>
+    <p class="hint" style="margin-top:18px">
+      配置保存在本机浏览器（localStorage），不会上传到任何服务器。<br>
+      本页面为纯静态 HTML，直连 <span class="mono">iot-api.heclouds.com</span>，无需后端服务。
+    </p>
+  </aside>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+"use strict";
+/* ═══════════════════════════════════════════════════════════
+   1. 配置
+   ═══════════════════════════════════════════════════════════ */
+const DEF = {
+  pid:"7t6YJ3uEgO",
+  dev:"MCU_51",
+  tok:"version=2018-10-31&res=products%2F7t6YJ3uEgO%2Fdevices%2FMCU_51&et=2106766495&method=md5&sign=nNq3bTHUbiRWm28pNPRnEQ%3D%3D"
+};
+
+let CFG = Object.assign({}, DEF);
+try{
+  const s = localStorage.getItem("onenet_cfg");
+  if (s) CFG = Object.assign(CFG, JSON.parse(s));
+}catch(e){}
+
+const API = "https://iot-api.heclouds.com";
+const LS_RAIL   = "onenet_rail_v1";      // 桌面折叠态（key 不变，老用户偏好无需迁移）
+const LS_RAIL_M = "onenet_rail_v1_m";    // 移动端折叠态（与桌面分开记忆）
+const LS_MODE   = "onenet_view_mode";    // 手动选择的视图模式："mobile" | "desktop" | "auto"
+const MQ_MOB = window.matchMedia("(max-width:760px)");   // 仅用于"自动"模式下的视口判定
+const MQ_NARROW = window.matchMedia("(max-width:720px)"); // 与兜底媒体查询同值，见 railIsFloat()
+const POLL_MS = 10000;          // 与固件 UPLOAD_INTERVAL_MS 一致
+
+/* ── 视图模式：手动选择优先，否则按视口宽度自动 ──
+   CSS 侧由 body[data-mode="mobile"] 承载手机版样式，
+   所以宽屏上切到"手机"也能真正预览手机布局。 */
+function currentMode(){
+  let m = null;
+  try{ m = localStorage.getItem(LS_MODE); }catch(e){}
+  if (m === "mobile" || m === "desktop") return m;
+  return MQ_MOB.matches ? "mobile" : "desktop";
+}
+function isMobileMode(){ return currentMode() === "mobile"; }
+
+/* rail 是否处于「顶栏··· 浮层」形态。
+   两种情况：
+     1) data-mode="mobile"          —— 手机视图
+     2) 视口 ≤720px 且强制 desktop  —— 兜底媒体查询把 rail 也切成了浮层
+   这个判断决定「选完分组是否自动收起」，必须与 CSS 的实际形态一致，
+   否则会出现"点了菜单项它还悬着"或"桌面模式误收起左侧竖条"。 */
+function railIsFloat(){
+  return isMobileMode() || (MQ_MOB.matches && MQ_NARROW.matches);
+}
+function applyMode(m){
+  document.body.dataset.mode = m;
+  $$("#railSeg .rail-seg__b").forEach(b => b.classList.toggle("is-on", b.dataset.mode === m));
+  syncVeil();
+  layoutPanel();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   2. 物模型元数据（对应 README 3.2 建物模型）
+   ═══════════════════════════════════════════════════════════ */
+const ICO = {
+  temp:'<path d="M14 14.8V4.5a2.5 2.5 0 00-5 0v10.3a4.5 4.5 0 1010 0z"/><path d="M11.5 8.5v6.5"/>',
+  humi:'<path d="M12 2.7l4.9 8.4a5.6 5.6 0 11-9.8 0z"/>',
+  alarm:'<path d="M18 8.5a6 6 0 10-12 0c0 6.2-2.5 7.5-2.5 7.5h17S18 14.7 18 8.5z"/><path d="M13.7 19.5a2 2 0 01-3.4 0"/>',
+  clock:'<circle cx="12" cy="12" r="9.5"/><path d="M12 6.8V12l3.5 2"/>',
+  cal:'<rect x="3" y="4.5" width="18" height="17" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/>',
+  wifi:'<path d="M2.5 8.5a16 16 0 0119 0M5.8 12.3a11 11 0 0112.4 0M9.1 16a6 6 0 015.8 0"/><path d="M12 19.6v.01"/>',
+  up:'<path d="M12 3v12.5M7.5 7.5L12 3l4.5 4.5"/><path d="M4 16.5v2a2.5 2.5 0 002.5 2.5h11a2.5 2.5 0 002.5-2.5v-2"/>',
+  dn:'<path d="M12 15.5V3M7.5 11L12 15.5 16.5 11"/><path d="M4 16.5v2a2.5 2.5 0 002.5 2.5h11a2.5 2.5 0 002.5-2.5v-2"/>',
+  mute:'<path d="M11 5.5L6.5 9H3.5v6h3l4.5 3.5z"/><path d="M16 9.5l4.5 5M20.5 9.5l-4.5 5"/>',
+  /* 校时：时钟 + 顺时针回转箭头（表针对时） */
+  settime:'<circle cx="12" cy="12" r="8.6"/><path d="M12 7.2V12l3.2 1.9"/><path d="M20.5 12a8.6 8.6 0 01-14.3 6.4"/><path d="M3.5 12a8.6 8.6 0 018.6-8.6c3 0 5.7 1.6 7.2 4"/>',
+  /* 立即上报：托盘 + 上传箭头 */
+  upload:'<path d="M4 15.5v3a2.5 2.5 0 002.5 2.5h11a2.5 2.5 0 002.5-2.5v-3"/><path d="M12 15.5V3.5"/><path d="M7.5 8L12 3.5 16.5 8"/>'
+};
+
+/* kind: sense=只读传感 · rw=读写阈值 · cmd=控制命令 */
+const PROPS = [
+  {id:"temperature", name:"温度",   unit:"℃",   kind:"sense", type:"float", icon:"temp",  step:0.1},
+  {id:"humidity",    name:"湿度",   unit:"%RH", kind:"sense", type:"int32", icon:"humi",  step:1},
+  {id:"datetime",    name:"日期时间",unit:"",    kind:"sense", type:"string",icon:"clock", isText:true},
+  {id:"week",        name:"星期",   unit:"",    kind:"sense", type:"string",icon:"cal",  isText:true},
+  {id:"alarm",       name:"报警",   unit:"",    kind:"sense", type:"int32", icon:"alarm", step:1},
+  {id:"rssi",        name:"信号强度",unit:"dBm",kind:"sense", type:"int32", icon:"wifi",  step:1},
+
+  {id:"temp_high", name:"温度上限", unit:"℃",  kind:"rw", type:"float", icon:"up", min:-55, max:125, step:0.5},
+  {id:"temp_low",  name:"温度下限", unit:"℃",  kind:"rw", type:"float", icon:"dn", min:-55, max:125, step:0.5},
+  {id:"humi_high", name:"湿度上限", unit:"%RH",kind:"rw", type:"int32", icon:"up", min:0,   max:99,  step:1},
+  {id:"humi_low",  name:"湿度下限", unit:"%RH",kind:"rw", type:"int32", icon:"dn", min:0,   max:99,  step:1},
+
+  {id:"mute",      name:"消音",     kind:"cmd", desc:"写 1 触发一次，等同按板载 K1 键，静音 10 秒。", icon:"mute"},
+  {id:"sync_time", name:"校时",     kind:"cmd", desc:"写 1 用 NTP 时间给 51 的 DS1302 校时。",         icon:"settime"},
+  {id:"refresh",   name:"立即上报", kind:"cmd", desc:"写 1 让 51 立刻发一帧，同步刷新全部属性。",     icon:"upload"}
+];
+
+const P = {};
+PROPS.forEach(p => P[p.id] = p);
+
+const CMD_IDS  = ["mute","sync_time","refresh"];
+const isCmd     = id => CMD_IDS.indexOf(id) >= 0;
+const ALARM_TXT = {0:"正常",1:"温度超限",2:"湿度超限",3:"温度湿度均超限"};
+const WEEK_TXT  = {MON:"星期一",TUE:"星期二",WED:"星期三",THU:"星期四",FRI:"星期五",SAT:"星期六",SUN:"星期日"};
+
+/* ═══════════════════════════════════════════════════════════
+   3. 状态
+   ═══════════════════════════════════════════════════════════ */
+let CUR = {};                 // 最新属性值
+let CUR_T = {};               // 最新属性上报时间(ms)
+let ONLINE = false;
+let LAST = null;              // last_time
+let timer = null;
+const spark = {};             // 迷你走势缓存
+const $  = s => document.querySelector(s);
+const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
+
+/* ═══════════════════════════════════════════════════════════
+   4. 工具
+   ═══════════════════════════════════════════════════════════ */
+function fmtVal(v, p){
+  if (v === undefined || v === null || v === "") return null;
+  if (p.isText) return String(v);
+  const n = parseFloat(v);
+  if (isNaN(n)) return String(v);
+  if (p.type === "float") return (Math.round(n * 10) / 10).toFixed(1);
+  return String(Math.round(n));
+}
+function fmtTime(ms){
+  if (!ms) return "—";
+  const d = new Date(ms), z = n => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + z(d.getMonth()+1) + "-" + z(d.getDate()) + " " + z(d.getHours()) + ":" + z(d.getMinutes()) + ":" + z(d.getSeconds());
+}
+function fmtAgo(ms){
+  if (!ms) return "无上报";
+  const s = Math.floor((Date.now() - ms) / 1000);
+  if (s < 0) return "刚刚";
+  if (s < 60) return s + " 秒前";
+  if (s < 3600) return Math.floor(s/60) + " 分钟前";
+  if (s < 86400) return Math.floor(s/3600) + " 小时前";
+  return Math.floor(s/86400) + " 天前";
+}
+function errText(code, msg){
+  const m = {
+    10403:"鉴权失败：Token 无效或已过期",
+    10400:"参数错误：产品 ID 或设备名称不正确",
+    10402:"资源不存在：设备未找到",
+    10404:"该 Token 无权访问此产品",
+    10411:"设备不在线",
+    10412:"设备已禁用",
+    10413:"设备密钥不正确"
+  };
+  return (m[code] ? m[code] + " · " : "") + (msg || ("code " + code));
+}
+
+/* ═══════════════════════════════════════════════════════════
+   5. API
+   ═══════════════════════════════════════════════════════════ */
+async function call(path, opt){
+  opt = opt || {};
+  const url = API + path + (opt.q ? "?" + opt.q : "");
+  const h = { "authorization": CFG.tok, "Content-Type": "application/json" };
+  let r;
+  try{
+    r = await fetch(url, {
+      method: opt.body ? "POST" : "GET",
+      headers: h,
+      body: opt.body ? JSON.stringify(opt.body) : undefined,
+      cache: "no-store"
+    });
+  }catch(e){
+    throw new Error("网络请求失败：无法连接 iot-api.heclouds.com（请检查网络或改用服务端代理）");
+  }
+  let j;
+  try{ j = await r.json(); }
+  catch(e){ throw new Error("平台返回了非 JSON 内容（HTTP " + r.status + "）"); }
+  if (j.code !== 0) throw new Error(errText(j.code, j.msg));
+  return j.data;
+}
+
+async function getDetail(){
+  const q = "product_id=" + encodeURIComponent(CFG.pid) + "&device_name=" + encodeURIComponent(CFG.dev);
+  return call("/device/detail", { q: q });
+}
+async function getProps(){
+  const q = "product_id=" + encodeURIComponent(CFG.pid) + "&device_name=" + encodeURIComponent(CFG.dev);
+  const arr = await call("/thingmodel/query-device-property", { q: q });
+  const out = {};
+  (arr || []).forEach(o => { if (o.identifier) out[o.identifier] = o; });
+  return out;
+}
+async function setProp(params){
+  return call("/thingmodel/set-device-property", {
+    body: { product_id: CFG.pid, device_name: CFG.dev, params: params }
+  });
+}
+/* 历史数据查询。
+   **limit 必须随时间窗放大**，否则 24小时/7天 会只拿到"最新 100 条"：
+   平台 sort=2 返回倒序、limit 截断头部，100 条在 10s 上报周期下仅覆盖 ~17 分钟，
+   于是四个时间窗拿回同一批数据（实测 1h/6h/24h/168h 全是 16:00~16:16那17 分钟），
+   画出来的时间轴被压扁到最后十几分钟，看不到"之前的数据"。
+   实测平台支持更大 limit：7 天窗口全量仅 618 条，limit=1000 即可取完。
+   放大后统一在本地按目标点数抽稀，既拿到全时段又不拖慢渲染。 */
+const HIST_MAX = 1000;
+async function getHistory(id, hours, want){
+  const end = Date.now(), start = end - hours * 3600000;
+  const q = [
+    "product_id=" + encodeURIComponent(CFG.pid),
+    "device_name=" + encodeURIComponent(CFG.dev),
+    "identifier=" + encodeURIComponent(id),
+    "start_time=" + start,
+    "end_time=" + end,
+    "sort=2",
+    "limit=" + HIST_MAX
+  ].join("&");
+  const d = await call("/thingmodel/query-device-property-history", { q: q });
+  const all = ((d && d.list) || []).slice().reverse();   // 倒序 → 时间正序
+  if (all.length <= want) return { list: all, total: all.length, all: all };
+  return { list: pickEven(all, want), total: all.length, all: all };
+}
+/* 等间隔抽稀到 n 个点。**必须等间隔**而不是 `i % step`：
+   上报本身可能不均匀（设备重启、补报、断网重连后集中补传），
+   按固定步长抽会整段漏掉密集区、保留稀疏区，画出来是假的。
+   等间隔保证最坏情况只丢相邻两点间的少量记录，全时段覆盖均匀。 */
+function pickEven(list, n){
+  const out = [];
+  const last = list.length - 1;
+  for (let i = 0; i < n; i++) out.push(list[Math.round(i * last / (n - 1))]);
+  return out;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   6. 提示条
+   ═══════════════════════════════════════════════════════════ */
+function toast(msg, type){
+  const icons = {
+    ok:'<path d="M20 6.5L9.2 17.3 4 12.1"/>',
+    info:'<circle cx="12" cy="12" r="9.5"/><path d="M12 11v5.5M12 7.8v.01"/>',
+    err:'<circle cx="12" cy="12" r="9.5"/><path d="M12 7.5v5.5M12 16.3v.01"/>'
+  };
+  const t = document.createElement("div");
+  t.className = "toast " + (type || "info");
+  t.innerHTML = '<svg viewBox="0 0 24 24">' + icons[type || "info"] + '</svg><span></span>';
+  t.lastChild.textContent = msg;
+  $("#toasts").appendChild(t);
+  setTimeout(() => {
+    t.classList.add("out");
+    setTimeout(() => t.remove(), 340);
+  }, 2400);
+}
+/* 状态胶囊（在线/离线合一）+ 离线告警详情。
+   在线时按钮不可点；离线时变成可点的告警入口。
+   离线是持续状态，详情不自动消失。 */
+function banner(title, body){
+  const btn = $("#offBtn");
+  if (!title){
+    btn.className = "pill on off-btn";
+    $("#offTx").textContent = "在线";
+    return;
+  }
+  btn.className = "pill off off-btn";
+  const SHORT = { "设备当前离线":"设备离线", "设备未激活":"未激活", "无法连接 OneNET 平台":"连接失败" };
+  $("#offTx").textContent = SHORT[title] || "异常";
+  $("#offT").textContent = title;
+  $("#offB").textContent = body || "";
+}
+function openOff(){
+  // 仅离线态可点开详情；在线态按钮是纯状态展示
+  if (ONLINE) return;
+  $("#offMask").classList.add("show");
+  document.body.style.overflow = "hidden";
+}
+function closeOff(){
+  $("#offMask").classList.remove("show");
+  syncScrollLock();
+}
+/* 统一收口滚动锁：没有任何浮层打开时才解锁 */
+function syncScrollLock(){
+  const any = $("#mask").classList.contains("show")
+           || $("#maskDr").classList.contains("show")
+           || $("#offMask").classList.contains("show")
+           || $("#panel").classList.contains("open");
+  document.body.style.overflow = any ? "hidden" : "";
+}
+
+/* ── 导航状态 ────────────────────────────────────────────────
+   浮层形态（手机视图 / 窄屏兜底）：rail 是顶栏「···」唤出的浮层，
+     `rail-off` = 菜单关闭，展开时虚化背景。
+   常驻形态（宽屏桌面）：rail 固定在左侧，`rail-off` = 折叠成图标条，不虚化。
+   两种语义共用同一个 class，靠 railIsFloat() 分流虚化与持久化 key。 */
+function syncVeil(){
+  const v = $("#railVeil");
+  if (!v) return;
+  // 浮层形态下：导航展开 或 面板打开 → 虚化主界面，达到"信息不杂乱"的效果。
+  // 常驻竖条形态不虚化（它在左侧不遮挡内容）。
+  const on = railIsFloat()
+    && ( !document.body.classList.contains("rail-off")
+         || $("#panel").classList.contains("open") );
+  v.classList.toggle("show", on);
+}
+/* 读当前形态的折叠态。
+   首次（无记录）：浮层形态默认收起（菜单藏在「···」里），常驻形态默认展开。 */
+function readRail(){
+  const f = railIsFloat();
+  try{
+    const v = localStorage.getItem(f ? LS_RAIL_M : LS_RAIL);
+    return v === null ? f : v === "1";
+  }catch(e){ return f; }
+}
+/* 导航状态唯一写入口：class + aria + 遮罩 + 持久化 + 过渡后重排 */
+function setRail(off, save){
+  off = !!off;
+  document.body.classList.toggle("rail-off", off);
+  $("#railTg").setAttribute("aria-expanded", String(!off));
+  $("#railTg").setAttribute("aria-label", off ? "展开导航" : "折叠导航");
+  // 「···」按钮的 aria 与视觉态跟真实状态同步
+  const fab = $("#railFab");
+  if (fab){
+    fab.setAttribute("aria-expanded", String(!off));
+    fab.setAttribute("aria-label", off ? "打开导航" : "关闭导航");
+  }
+  syncVeil();
+  if (save !== false){
+    const key = railIsFloat() ? LS_RAIL_M : LS_RAIL;
+    try{ localStorage.setItem(key, off ? "1" : "0"); }catch(e){}
+  }
+  setTimeout(layoutPanel, 460);          // 等过渡完再重排列
+}
+
+/* ═══════════════════════════════════════════════════════════
+   7. 渲染 — 卡片
+   ═══════════════════════════════════════════════════════════ */
+function svgIcon(k){
+  return '<svg viewBox="0 0 24 24">' + (ICO[k] || ICO.temp) + '</svg>';
+}
+
+/* 错落多列：把索引轮询分给各列，纯函数幂等，数值变化不会重排 */
+const COL_MIN   = 232;               // 桌面：面板内容宽 495px → 恒 2 列
+const COL_MIN_M = 132;               // 移动：面板内容宽 275~385px → 2 列
+const COL_MAX_M = 2;                 // 移动端封顶 2 列，与桌面观感严格一致
+const LEAD = [0, 18, 8, 26];         // 每列额外上移量，形成错落台阶（2 列时只用到 0 / 18）
+function colsFor(w){
+  if (isMobileMode()) return Math.max(1, Math.min(COL_MAX_M, Math.floor(w / COL_MIN_M)));
+  return Math.max(1, Math.min(4, Math.floor(w / COL_MIN)));
+}
+function distribute(total, cols){
+  const out = Array.from({ length: cols }, () => []);
+  for (let i = 0; i < total; i++) out[i % cols].push(i);
+  return out;
+}
+let CARDS = [];                        // 10 个属性卡节点，供 layoutPanel 搬运
+function layoutPanel(){
+  const g = $("#grid");
+  if (!g || !CARDS.length) return;
+  const cols = colsFor(g.clientWidth || 560);
+  const buckets = distribute(CARDS.length, cols);
+  // 复用既有列容器，只增删差额，避免重建节点丢失卡片点击监听
+  let mcols = $$(".mcol", g);
+  while (mcols.length > cols){ g.removeChild(mcols.pop()); }
+  while (mcols.length < cols){
+    const c = document.createElement("div");
+    c.className = "mcol";
+    g.appendChild(c);
+    mcols.push(c);
+  }
+  mcols.forEach((c, i) => {
+    c.style.paddingTop = LEAD[i % LEAD.length] + "px";
+    // appendChild 对已在本列的节点是无操作，对别列的节点是移动 —— 监听器随节点保留
+    buckets[i].forEach(ci => c.appendChild(CARDS[ci]));
+  });
+  // 列宽变化后重绘迷你走势图
+  CARDS.forEach(cd => { const cv = cd.querySelector("[data-sp]"); if (cv) drawSpark(cv, cd.dataset.id); });
+}
+
+function buildCards(){
+  const g = $("#grid");
+  g.innerHTML = "";
+  CARDS = [];
+  PROPS.filter(p => p.kind !== "cmd").forEach(p => {
+    const d = document.createElement("div");
+    d.className = "card glass clickable";
+    d.dataset.id = p.id;
+    d.innerHTML =
+      '<div class="c-top">' +
+        '<div class="c-ico">' + svgIcon(p.icon) + '</div>' +
+        '<div><div class="c-name">' + p.name + '</div><div class="c-id mono">' + p.id + '</div></div>' +
+      '</div>' +
+      '<div class="c-val na" data-v>载入中…</div>' +
+      '<canvas class="spark" data-sp style="display:none"></canvas>' +
+      '<div class="c-foot"><span data-f>—</span>' +
+        '<span class="rw">' + (p.kind === "rw" ? "读写" : "只读") + '</span>' +
+      '</div>';
+    d.addEventListener("click", () => openHistory(p.id));
+    CARDS.push(d);
+  });
+
+  const tg = $("#thrGrid");
+  tg.innerHTML = "";
+  PROPS.filter(p => p.kind === "rw").forEach(p => {
+    const d = document.createElement("div");
+    d.className = "thr glass";
+    d.dataset.id = p.id;
+    d.innerHTML =
+      '<div class="thr-h"><div class="thr-name">' + p.name + '</div>' +
+        '<div class="thr-cur">当前 <b data-cur>--</b>' + p.unit + '</div></div>' +
+      '<button class="thr-big" data-big>' +
+        '<b data-bigv>--</b><span class="thr-big__u">' + p.unit + '</span>' +
+        '<svg class="thr-big__pen" viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>' +
+      '</button>' +
+      '<div class="sl"><div class="sl__track">' +
+        '<div class="sl__fill" data-fill></div><div class="sl__knob" data-knob></div>' +
+      '</div></div>' +
+      '<div class="thr-scale"><span data-lo>' + p.min + '</span><span>步长 ' + p.step + p.unit + '</span><span data-hi>' + p.max + '</span></div>' +
+      '<div class="thr-exact" hidden><div class="stepper">' +
+        '<button class="scancel" type="button" data-cancel aria-label="取消并收起">' +
+          '<svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
+        '</button>' +
+        '<input class="sval" type="number" inputmode="decimal" step="' + p.step + '" data-in>' +
+        '<button class="sok" type="button" data-ok aria-label="确认并保存" data-dirty="0">' +
+          '<svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>' +
+        '</button>' +
+      '</div></div>';
+    tg.appendChild(d);
+    bindThr(d, p);
+  });
+
+  const cg = $("#ctrlGrid");
+  cg.innerHTML = "";
+  PROPS.filter(p => p.kind === "cmd").forEach(p => {
+    const b = document.createElement("button");
+    b.className = "ctrl glass";
+    b.type = "button";
+    b.dataset.id = p.id;
+    b.title = p.name + "（下发 1）· " + p.desc;
+    b.setAttribute("aria-label", p.name + "：" + p.desc);
+    b.innerHTML = '<span class="c-ico">' + svgIcon(p.icon) + '</span>' +
+                  '<span class="ctrl-name">' + p.name + '</span>';
+    b.addEventListener("click", () => fire(p.id, b));
+    cg.appendChild(b);
+  });
+
+  layoutPanel();
+}
+
+/* ── 阈值：固件硬边界（Calendar/main.c）────────────────────
+   main.c:340  if(H_High > 99) H_High = 80;     湿度上限 >99 开机被悄悄改回 80
+   main.c:380  T_High ≥ T_Low + 5（×10）        温度上下限至少差 0.5℃
+   main.c:382  H_High ≥ H_Low + 1               湿度上下限至少差 1
+   注意 99 本身合法，只有 >99 才被改写，所以上限取 99 而非 80 */
+function thrBounds(p){
+  const g = id => { const v = parseFloat(CUR[id]); return isNaN(v) ? null : v; };
+  if (p.id === "temp_high"){ const lo = g("temp_low");  return { min:p.min, max:p.max, lo: lo == null ? p.min : Math.max(p.min,  lo + 0.5) }; }
+  if (p.id === "temp_low"){  const hi = g("temp_high"); return { min:p.min, max:p.max, hi: hi == null ? p.max : Math.min(p.max,  hi - 0.5) }; }
+  if (p.id === "humi_high"){ const lo = g("humi_low");  return { min:p.min, max:99,   lo: lo == null ? p.min : Math.max(p.min,  lo + 1) }; }
+  if (p.id === "humi_low"){  const hi = g("humi_high"); return { min:p.min, max:99,   hi: hi == null ? 99    : Math.min(99,     hi - 1) }; }
+  return { min:p.min, max:p.max };
+}
+function thrClamp(p, n){
+  const b = thrBounds(p);
+  let v = Math.min(b.max, Math.max(b.min, n));
+  if (b.lo != null) v = Math.max(b.lo, v);
+  if (b.hi != null) v = Math.min(b.hi, v);
+  return v;
+}
+
+/* x 坐标 → 数值：按动态上下界裁剪，再按 step 吸附 */
+function slValue(card, p, clientX){
+  const b = thrBounds(p);
+  const r = card.querySelector(".sl__track").getBoundingClientRect();
+  if (!r.width) return null;
+  const t = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+  let v = b.min + t * (b.max - b.min);
+  if (b.lo != null) v = Math.max(b.lo, v);
+  if (b.hi != null) v = Math.min(b.hi, v);
+  const dec = p.step < 1 ? 1 : 0;
+  return +(Math.round(v / p.step) * p.step).toFixed(dec);
+}
+
+/* 阈值控件 */
+let dragId = null;                 // 正在拖动的阈值 id（拖动中不回写 input）
+function bindThr(card, p){
+  const inp = card.querySelector("[data-in]");
+  const dec = p.step < 1 ? 1 : 0;
+  const show = v => {
+    if (v === null || v === undefined || isNaN(v)) return;
+    const b = thrBounds(p);
+    const pc = (b.max > b.min ? Math.min(1, Math.max(0, (v - b.min) / (b.max - b.min))) : 0) * 100 + "%";
+    card.querySelector("[data-fill]").style.width = pc;
+    card.querySelector("[data-knob]").style.left = pc;
+    card.querySelector("[data-lo]").textContent = b.lo != null ? b.lo : b.min;
+    card.querySelector("[data-hi]").textContent = b.hi != null ? b.hi : b.max;
+    card._show = show;
+  };
+  card._show = show;
+
+  /* 点大字 → 展开精确输入（0.5℃ 在 180℃ 量程上 360 档，纯拖动易误落档）。
+     展开时的状态重置在下面的展开监听里做。 */
+  const ex = card.querySelector(".thr-exact");
+  const ok = card.querySelector("[data-ok]");
+
+  /* 精确输入的提交内核。
+     两个标记缺一不可：
+     **done** —— 本次编辑是否已下发。必须靠它而不是"值是否变了"来防重复：
+       commit() 里的 preview() 会立刻改写 CUR[id]，一旦下发过，
+       后续再判`n !== CUR[p.id]` 永远为假，点 √ 就变成空转（这是本 bug 的根因）。
+     **touched** —— 用户是否真的动过输入框。preview() 已把新值写进 CUR，
+       所以 blur 时没法靠 CUR 反推"改没改"，只能显式记录。
+     **busy** —— 同一次交互内 blur 与 click 挤在相邻宏任务，用它兜住并发调用。 */
+  let busy = false, done = false, touched = false, canceling = false;
+  function commit(){
+    if (busy || done || !touched) return;
+    const n = parseFloat(inp.value);
+    if (isNaN(n)){ done = true; loadThr(p, inp); return; }
+    const v = thrClamp(p, n);
+    if (v !== n) inp.value = v.toFixed(dec).replace(/\.0+$/, "");
+    done = true;
+    preview(p.id, v);
+    busy = true;
+    fire(p.id, null, { id: p.id, value: v }, inp);
+    // fire 是异步的，锁在下一个宏任务释放即可覆盖同一次交互里的 blur 尾巴
+    setTimeout(() => { busy = false; }, 0);
+  }
+  inp._commit = commit;
+
+  /* 打开编辑时重置状态：一次编辑只下发一条指令。 */
+  card.querySelector("[data-big]").addEventListener("click", () => {
+    ex.hidden = !ex.hidden;
+    if (!ex.hidden){
+      done = false; busy = false; touched = false; canceling = false;
+      ok.dataset.dirty = "0";
+      inp.focus(); inp.select();
+    }
+  });
+
+  /* dirty：值与云端真值不同则高亮确认点，提示"现在提交才有效"。 */
+  const markDirty = () => {
+    const n = parseFloat(inp.value);
+    ok.dataset.dirty = (!isNaN(n) && n !== CUR[p.id]) ? "1" : "0";
+  };
+  ok.addEventListener("click", () => {
+    commit();          // 内部已判 done，blur 抢先提交过就跳过
+    closeEdit();
+  });
+
+  /* 取消圆点：收回编辑区且**绝不下发**。
+     blur 会抢在 click 之前跑，所以要在 pointerdown 阶段（blur 之前）打标记。 */
+  card.querySelector("[data-cancel]").addEventListener("pointerdown", () => { canceling = true; });
+  card.querySelector("[data-cancel]").addEventListener("click", () => {
+    canceling = false;
+    done = true; touched = false;         // 取消即终结本次编辑，防止 blur 补发
+    loadThr(p, inp);       // 还原成云端真值，丢弃预览期间的临时值
+    show(parseFloat(CUR[p.id]));
+    closeEdit();
+  });
+
+  inp.addEventListener("input", () => {
+    const n = parseFloat(inp.value);
+    touched = true;
+    preview(p.id, isNaN(n) ? null : thrClamp(p, n));
+    markDirty();
+  });
+  // 回车 = 确认并收回编辑框（blur 紧随其后触发，done 标记会挡掉二次下发）
+  inp.addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    commit();
+    closeEdit();
+    inp.blur();
+  });
+  // 不监听 change：value 变化一定先触发 input，
+  // 多挂一条 change 只会和 blur 叠成两次提交。
+  inp.addEventListener("blur", () => {
+    if (canceling){ canceling = false; closeEdit(); return; }   // 点的是取消，不提交
+    commit();          // 没动过输入框时 touched 为false，原样返回，不产生 set 指令
+    if (!done) loadThr(p, inp);
+    closeEdit();
+  });
+
+  function closeEdit(){
+    ex.hidden = true;
+    ok.dataset.dirty = "0";
+  }
+
+  /* ── 滑轨拖动：Pointer Events 统一鼠标与触摸 ── */
+  const track = card.querySelector(".sl__track");
+  let held = false, pid = null;
+  track.addEventListener("pointerdown", e => {
+    held = true; pid = e.pointerId; dragId = p.id;
+    try{ track.setPointerCapture(pid); }catch(_){}
+    card.classList.add("dragging");
+    e.preventDefault();
+    const v = slValue(card, p, e.clientX);
+    if (v != null){ preview(p.id, v); show(v); }
+  });
+  track.addEventListener("pointermove", e => {
+    if (!held) return;
+    e.preventDefault();
+    const v = slValue(card, p, e.clientX);
+    if (v != null){ preview(p.id, v); show(v); }   // 拖动中只预览，不下发
+  });
+  const endDrag = e => {
+    if (!held) return;
+    held = false; dragId = null;
+    card.classList.remove("dragging");
+    try{ track.releasePointerCapture(pid); }catch(_){}
+    const v = slValue(card, p, e.clientX);
+    const dec2 = p.step < 1 ? 1 : 0;
+    inp.value = v == null ? "" : String(+v.toFixed(dec2)).replace(/\.0+$/, "");
+    const fin = v == null ? parseFloat(inp.value) : v;
+    if (isNaN(fin)){ loadThr(p, inp); return; }
+    show(fin);
+    fire(p.id, null, { id: p.id, value: fin }, inp);   // 松手才下发
+  };
+  track.addEventListener("pointerup", endDrag);
+  track.addEventListener("pointercancel", endDrag);
+}
+function loadThr(p, inp){
+  const v = CUR[p.id];
+  if (v === undefined || v === null){ inp.value = ""; return; }
+  inp.value = String(parseFloat(v));
+}
+function preview(id, v){
+  CUR[id] = v;
+  const card = $('.thr[data-id="' + id + '"]');
+  if (card){
+    const bv = card.querySelector("[data-bigv]");
+    if (bv) bv.textContent = v === null ? "--" : v;
+    card.querySelector("[data-cur]").textContent = v === null ? "--" : v;
+    if (card._show && v !== null) card._show(v);
+  }
+  const c = $('.card[data-id="' + id + '"]');
+  if (c) renderCardVal(c, P[id]);
+  if (id === "temp_high") $("#hTH").textContent = v === null ? "--" : v;
+  if (id === "temp_low")  $("#hTL").textContent = v === null ? "--" : v;
+  if (id === "humi_high") $("#hHH").textContent = v === null ? "--" : v;
+  if (id === "humi_low")  $("#hHL").textContent = v === null ? "--" : v;
+}
+
+/* 卡片数值渲染 */
+function renderCardVal(card, p){
+  const v = CUR[p.id];
+  const el = card.querySelector("[data-v]");
+  const sp = card.querySelector("[data-sp]");
+  if (v === undefined || v === null){
+    el.className = "c-val na";
+    el.textContent = "无数据";
+    sp.style.display = "none";
+    return;
+  }
+  const s = fmtVal(v, p);
+  if (p.id === "week"){
+    el.className = "c-val txt";
+    el.textContent = WEEK_TXT[s] || s;
+    sp.style.display = "none";
+  }else if (p.isText){
+    el.className = "c-val txt";
+    el.textContent = s;
+    sp.style.display = "none";
+  }else{
+    el.className = "c-val";
+    el.innerHTML = '<span></span>' + (p.unit ? '<span class="u">' + p.unit + '</span>' : '');
+    el.firstChild.textContent = s;
+    if (p.id === "alarm"){
+      const lv = parseInt(v, 10) || 0;
+      el.firstChild.textContent = ALARM_TXT[lv] || String(lv);
+      el.firstChild.style.fontSize = ".62em";
+    }
+    drawSpark(sp, p.id);
+  }
+}
+
+/* 迷你走势（手写 canvas，无外部依赖） */
+function pushSpark(id, v){
+  const a = spark[id] || (spark[id] = []);
+  a.push(v);
+  if (a.length > 28) a.shift();
+}
+function drawSpark(cv, id){
+  const a = spark[id];
+  if (!a || a.length < 2){ cv.style.display = "none"; return; }
+  cv.style.display = "block";
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth || 220, h = 34;
+  cv.width = w * dpr; cv.height = h * dpr;
+  const x = cv.getContext("2d");
+  x.scale(dpr, dpr);
+  const mn = Math.min.apply(null, a), mx = Math.max.apply(null, a);
+  const rg = (mx - mn) || 1;
+  const px = i => (i / (a.length - 1)) * (w - 3) + 1.5;
+  const py = v => h - 4 - ((v - mn) / rg) * (h - 9);
+
+  const grd = x.createLinearGradient(0, 0, 0, h);
+  grd.addColorStop(0, "rgba(109,139,181,.30)");
+  grd.addColorStop(1, "rgba(109,139,181,0)");
+  x.beginPath(); x.moveTo(px(0), py(a[0]));
+  a.forEach((v, i) => x.lineTo(px(i), py(v)));
+  x.lineTo(px(a.length - 1), h); x.lineTo(px(0), h); x.closePath();
+  x.fillStyle = grd; x.fill();
+
+  x.beginPath(); x.moveTo(px(0), py(a[0]));
+  a.forEach((v, i) => x.lineTo(px(i), py(v)));
+  x.strokeStyle = "#6d8bb5"; x.lineWidth = 1.7; x.lineJoin = "round"; x.lineCap = "round"; x.stroke();
+
+  x.beginPath(); x.arc(px(a.length - 1), py(a[a.length - 1]), 2.6, 0, 7);
+  x.fillStyle = "#6d8bb5"; x.fill();
+  x.beginPath(); x.arc(px(a.length - 1), py(a[a.length - 1]), 5, 0, 7);
+  x.fillStyle = "rgba(109,139,181,.22)"; x.fill();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   8. 主刷新
+   ═══════════════════════════════════════════════════════════ */
+let busy = false;
+async function refresh(manual){
+  if (busy) return;
+  busy = true;
+  const ico = $("#refIco"), tx = $("#refTx");
+  ico.classList.add("spin");
+
+  try{
+    const d = await getDetail();
+    /* OneNET /device/detail 没有 online 字段，在线状态在 status：
+       0=离线 1=在线 2=未激活（见官方文档「设备详情」data.status）。
+       曾误读 d.online → undefined → 永远显示离线。
+       另加一层兜底：status 缺失时按 last_time 新鲜度推断（5 分钟内有上报即视为在线），
+       避免平台改字段后又整体失效。 */
+    LAST = d.last_time ? new Date(d.last_time).getTime() : null;
+    const st = d.status;
+    let online;
+    if (st === 0 || st === 1 || st === 2){
+      online = (st === 1);
+    }else{
+      online = !!(LAST && (Date.now() - LAST) < 300000);
+    }
+    if (st === 2){
+      ONLINE = false;
+      banner("设备未激活",
+        "设备在平台上的状态是「未激活」，设备可能从未成功连上云端，或密钥/产品配置不匹配。" +
+        "请核对 config.h 里的 ONENET_PRODUCT_ID / ONENET_DEVICE_NAME / ONENET_MQTT_TOKEN。");
+      paint();
+      if (manual) toast("设备未激活", "err");
+      return;
+    }
+    ONLINE = online;
+
+    if (!ONLINE){
+      banner("设备当前离线",
+        "平台最后一次收到数据是 " + fmtTime(LAST) + "（" + fmtAgo(LAST) + "）。" +
+        "属性显示的是云端缓存值，控制命令可能无法送达，请检查 ESP8266 是否上电、Wi-Fi 是否连接。");
+    }else{
+      banner(null);
+    }
+
+    const props = await getProps();
+    let anyFresh = false;
+    Object.keys(props).forEach(id => {
+      const o = props[id];
+      if (o.time) CUR_T[id] = o.time;
+      if (o.value !== undefined && o.value !== null && o.value !== ""){
+        CUR[id] = o.value;
+        anyFresh = true;
+        const p = P[id];
+        if (p && !p.isText && !isCmd(id)) pushSpark(id, parseFloat(o.value));
+      }else if (CUR[id] === undefined){
+        CUR[id] = null;   // 明确标记为无数据
+      }
+    });
+
+    paint();
+    if ($("#panel").classList.contains("open") && !$("#panelProps").hidden) layoutPanel();
+    if (manual) toast("已刷新 · " + (ONLINE ? "设备在线" : "设备离线"), ONLINE ? "ok" : "info");
+  }catch(e){
+    ONLINE = false;
+    banner("无法连接 OneNET 平台", e.message);
+    paint();
+    if (manual) toast(e.message, "err");
+  }finally{
+    ico.classList.remove("spin");
+    tx.textContent = "刷新";
+    busy = false;
+  }
+}
+
+function paint(){
+  $$("#grid .card").forEach(c => {
+    const p = P[c.dataset.id];
+    renderCardVal(c, p);
+    const t = CUR_T[p.id];
+    c.querySelector("[data-f]").textContent = t ? fmtAgo(t) : (CUR[p.id] != null ? "云端缓存" : "未上报");
+  });
+
+  PROPS.filter(p => p.kind === "rw").forEach(p => {
+    const card = $('.thr[data-id="' + p.id + '"]');
+    if (!card) return;
+    const v = CUR[p.id];
+    const s = (v != null) ? fmtVal(v, p) : "--";
+    card.querySelector("[data-cur]").textContent = s;
+    card.querySelector("[data-bigv]").textContent = s;
+    if (card._show && v != null) card._show(parseFloat(v));   // 同步滑块位置
+    const inp = card.querySelector("[data-in]");
+    if (document.activeElement !== inp && dragId !== p.id) loadThr(p, inp);
+  });
+
+  const dt = CUR.datetime ? String(CUR.datetime) : "";
+  const m = dt.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+  if (m){
+    $("#hTime").innerHTML = '<span>' + m[4] + ':' + m[5] + '</span><span class="sec">' + m[6] + '</span>';
+    $("#hDate").textContent = m[1] + "-" + m[2] + "-" + m[3];
+  }else{
+    $("#hTime").innerHTML = '--:--<span class="sec">--</span>';
+    $("#hDate").textContent = "----.--.--";
+  }
+  const wk = CUR.week ? String(CUR.week) : "";
+  $("#hWeek").textContent = WEEK_TXT[wk] || (wk ? wk : "星期 --");
+
+  const lv = parseInt(CUR.alarm, 10);
+  const ok = !isNaN(lv);
+  const el = $("#hAlarm");
+  el.innerHTML = '<span class="alarm-badge alarm-' + (ok ? lv : 0) + '">' +
+    (ok ? (ALARM_TXT[lv] || ("状态 " + lv)) : "无数据") + '</span>';
+
+  const tp = CUR.temperature, hm = CUR.humidity, rs = CUR.rssi;
+  $("#hTemp").textContent = tp != null ? fmtVal(tp, P.temperature) : "--";
+  $("#hHumi").textContent = hm != null ? fmtVal(hm, P.humidity) : "--";
+  $("#hRssi").textContent = rs != null ? fmtVal(rs, P.rssi) : "--";
+  $("#hTempS").textContent = tp != null ? fmtAgo(CUR_T.temperature) : "DS18B20 · 传感器未上报";
+  $("#hHumiS").textContent = hm != null ? fmtAgo(CUR_T.humidity) : "DHT11 · 未接/未上报";
+  $("#hRssiS").textContent = rs != null ? fmtAgo(CUR_T.rssi) : "ESP8266";
+
+  ["temp_high:hTH","temp_low:hTL","humi_high:hHH","humi_low:hHL"].forEach(pair => {
+    const a = pair.split(":");
+    const v = CUR[a[0]];
+    $("#" + a[1]).textContent = v != null ? fmtVal(v, P[a[0]]) : "--";
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   9. 下发
+   ═══════════════════════════════════════════════════════════ */
+async function fire(id, btn, override, inp){
+  const isThresh = override && !isCmd(id);
+  const value = isThresh ? override.value : 1;
+
+  // ── 控制命令：立刻反馈「已执行」，不等设备响应 ──
+  // 卡片本身就是按钮（内含图标+文字），用 class 做状态反馈，
+  // 不能改 textContent —— 那会把图标一起抹掉。
+  if (!isThresh && btn){
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.classList.add("done");
+    const lbl = btn.querySelector(".ctrl-name");
+    const old = lbl ? lbl.textContent : "";
+    if (lbl) lbl.textContent = "已执行";
+    toast(P[id].name + " · 已执行", "ok");
+    setTimeout(() => {
+      if (lbl) lbl.textContent = old;
+      btn.classList.remove("done");
+      btn.disabled = false;
+    }, 1600);
+  }
+
+  try{
+    const params = {};
+    params[id] = value;
+    await setProp(params);
+    if (isThresh){
+      CUR[id] = value;
+      paint();
+      if (inp) toast(P[id].name + " 已下发 " + value + P[id].unit, "ok");
+      setTimeout(() => refresh(false), 1400);   // 等 ESP 回读 TP 后再校准
+    }
+  }catch(e){
+    // 阈值类需要回滚并提示；控制命令已先行反馈，这里只补充说明
+    if (isThresh){
+      toast(P[id].name + " 下发失败：" + e.message, "err");
+      if (inp){ inp._commit && paint(); }
+    }else{
+      banner("指令未送达", P[id].name + "：已发送，但平台返回——" + e.message);
+      setTimeout(() => refresh(false), 600);
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   10. 历史数据
+   ═══════════════════════════════════════════════════════════ */
+let M = { id:null, p:null, hours:1 };
+
+async function openHistory(id){
+  const p = P[id];
+  if (!p) return;
+  M = { id: id, p: p, hours: 1 };
+  // 时间段按钮高亮必须跟随 M.hours 重置。
+  // 否则上一次点过别的时段，这次打开弹窗会高亮错位。
+  $$("#seg button").forEach(b => b.classList.toggle("on", +b.dataset.h === 1));
+
+  $("#mIco").innerHTML = svgIcon(p.icon);
+  $("#mName").textContent = p.name;
+  $("#mId").textContent = p.id;
+  $("#mType").textContent = p.type + (p.unit ? " · " + p.unit : "") + " · " + (p.kind === "rw" ? "读写" : "只读");
+  $("#mStats").innerHTML = '<div class="m-stat"><div class="m-stat-k">最新值</div><div class="m-stat-v" id="msCur">—</div></div>' +
+    '<div class="m-stat"><div class="m-stat-k">更新时间</div><div class="m-stat-v" id="msTime" style="font-size:13px">—</div></div>' +
+    '<div class="m-stat"><div class="m-stat-k">记录数</div><div class="m-stat-v" id="msN">—</div></div>';
+  // 字符串类型不渲染图表区（只有表格）；否则先显示"正在读取"
+  $("#chartBox").hidden = !!p.isText;
+  $("#chartBox").innerHTML = p.isText ? "" :
+    '<div class="c-empty"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/></svg>正在读取历史数据…</div>';
+  $("#mBody").innerHTML = "";
+  $("#mRange").textContent = "";
+  $("#mask").classList.add("show");
+  document.body.style.overflow = "hidden";
+
+  const v = CUR[id];
+  $("#msCur").textContent = v != null ? fmtVal(v, p) + (p.unit ? " " + p.unit : "") : "无数据";
+  $("#msTime").textContent = CUR_T[id] ? fmtTime(CUR_T[id]) : "—";
+  loadHist();
+}
+
+/* 每次 loadHist 领一个递增令牌。响应回来后若令牌已过期就丢弃渲染。
+   **不能用 `M.loading` 做互斥** —— 那是本 bug 的根因：
+   openHistory 默认 6 小时并立即发请求，用户紧接着点「1 小时」时
+   6 小时的请求仍在飞行中，loadHist 被 `if (M.loading) return` 直接挡掉，
+   于是 1 小时的请求从未发出，随后 6 小时的响应照常渲染 ——
+   按钮显示「1 小时」而图上是 6 小时的数据。
+   令牌方案让两次请求都能发出，只有最新那次能画图。 */
+let HIST_SEQ = 0;
+
+async function loadHist(){
+  if (!M.id) return;
+  const token = ++HIST_SEQ;
+  M.done = false;
+  const id = M.id, p = M.p, hours = M.hours;
+  const end = Date.now(), start = end - hours * 3600000;
+  // 跨度超过一天时 range 也要带日期，否则 7 天窗口两端都只显示时刻
+  $("#mRange").textContent = (hours > 24 ? fmtTime(start).slice(0, 10) : fmtTime(start).slice(5)) +
+                            "  →  " + fmtTime(end).slice(5);
+
+  try{
+    // 期望点数按时间窗递增：短窗要密（看细节），长窗可以稀（只看趋势）
+    const want = hours <= 1 ? 120 : hours <= 6 ? 240 : 400;
+    const { list, total, all } = await getHistory(id, hours, want);
+    // 令牌过期 = 用户已切到别的时间段/属性，丢弃本次结果
+    if (M.id !== id || token !== HIST_SEQ) return;
+    M.done = true;
+    $("#msN").textContent = total + " 条";
+
+    if (!list.length){
+      // 无数据时一律显示提示（字符串类型也该知道"这段时间没记录"），
+      // 故此分支需要把 chartBox 的 hidden 解除。
+      $("#chartBox").hidden = false;
+      $("#chartBox").innerHTML =
+        '<div class="c-empty"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 7.5v5.5M12 16.3v.01"/></svg>' +
+        '<div><b>该时间段内没有历史数据</b><br>属性 <span class="mono">' + id + '</span> 在最近 ' + hours + ' 小时内没有上报记录。<br>' +
+        '设备若刚上线或传感器未接（如 DHT11），平台不会写入历史数据。</div></div>';
+      $("#mBody").innerHTML = "";
+      return;
+    }
+
+    M.list = list;                       // 供滑块重绘，避免每次拖动都请求接口
+    M.all = all;                         // 全量记录，供表格展示
+    /* 字符串类型（日期时间 / 星期）没有可绘制的数值纵轴，
+       而下方的表格已经把「时间 + 内容」完整列出 ——
+       再放一块卡片式时间轴纯属重复展示，还把表格挤到首屏之外。
+       故字符串类型直接跳过图表区，只留表格。 */
+    if (!p.isText){
+      $("#chartBox").hidden = false;
+      $("#chartBox").innerHTML = '<div class="chart-row"><div class="chart-main">' +
+        '<canvas id="cv"></canvas></div>' +
+        '<div class="zoomer" id="zoomer">' +
+          '<div class="zoomer__top"><b>—</b> /格</div>' +
+          '<div class="zoomer__trk" id="zTrk" role="slider" tabindex="0"' +
+          ' aria-label="纵轴单位长度" aria-valuemin="1" aria-valuemax="20" aria-valuenow="4.2" aria-orientation="vertical">' +
+            '<div class="zoomer__fill"></div>' +
+            '<div class="zoomer__auto"></div>' +
+            '<div class="zoomer__knob">默认</div>' +
+          '</div>' +
+          '<div class="zoomer__hint">------------</div>' +
+          '<button type="button" class="zoomer__auto-btn" aria-pressed="true">默认</button>' +
+        '</div></div>';
+      drawChart(list, p);
+      bindZoomer();
+    }else{
+      // 字符串类型：不渲染图表区，容器整体隐藏（表格在 #mBody 里，不受影响）
+      $("#chartBox").innerHTML = "";
+      $("#chartBox").hidden = true;
+    }
+    drawTable(all, p);
+  }catch(e){
+    if (M.id !== id || token !== HIST_SEQ) return;   // 过期请求的失败不该打扰用户
+    $("#chartBox").innerHTML =
+      '<div class="c-empty"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 7.5v5.5M12 16.3v.01"/></svg>' +
+      '<div><b>读取历史数据失败</b><br>' + e.message + '</div></div>';
+  }
+}
+
+/* 纵轴缩放档位：越大曲线越平缓。
+   默认档 = 4.2（= 数组中点），实测这个跨度观感最舒服：
+   0.3℃ 级别的波动在自动档会被拉满 232px 显得尖锐，×4.2 把中位线附近的
+   起伏压成一条可读的缓坡，既能看出方向又不夸张。 */
+let YZOOM = 4.2;
+let YSPAN_STEPS = [1, 1.6, 2.6, 4.2, 7, 12, 20];   // 相对数据跨度的倍率
+const Y_IDX_DEF = 3;                                // 4.2 在数组中的下标（正中间）
+
+function drawChart(list, p){
+  const cv = $("#cv");
+  const box = $("#chartBox");
+  const W = cv.clientWidth || box.clientWidth - 32;
+  const H = 232;
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = W * dpr; cv.height = H * dpr; cv.style.height = H + "px";
+  const x = cv.getContext("2d");
+  x.scale(dpr, dpr);
+
+  const pad = { t: 14, r: 14, b: 30, l: 46 };
+  const nums = list.map(o => parseFloat(o.value)).filter(v => !isNaN(v));
+  const dmn = Math.min.apply(null, nums), dmx = Math.max.apply(null, nums);
+  const t0 = list[0].time, t1 = list[list.length - 1].time;
+  const tr = (t1 - t0) || 1;
+  const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
+  const px = t => pad.l + ((t - t0) / tr) * iw;
+
+  /* 打点：数据已在 getHistory 里等间隔抽稀过（1h→120 / 6h→240 / 24h→400 / 7天→400），
+     横向分布均匀，这里只需防"点画成实心一条"的情况。
+     用实际像素间距判断而非 i % step —— 前者对任意分布都成立，
+     且天然保证 1px 间距时刚好 60 个点左右，与短窗密集、长窗稀疏的观感一致。 */
+  const minGap = Math.max(2, iw / 70);   // 横向最多约 70 个点，间距随画布宽度自适应
+
+  /* 纵轴范围：**统一锚定数据中值**（(min+max)/2），靠倍率调节陡峭度。
+     不再对 1 倍做"跟随 min/max 加 14% 余量"的特例——那样 0.3℃ 波动会被
+     拉满 232px 显得尖锐（就是最初要解决的问题）。
+     若锚定 min，放大后曲线会贴顶飞出视野；锚定中值则曲线始终居中、只改陡峭度。
+     `need` 钳位保证数据不会溢出视野：倍率再小也至少留 0.5 的跨度，
+     同时防止 (mx-mn) 归零导致 py() 除以 0。 */
+  const mid = (dmn + dmx) / 2;
+  const raw = (dmx - dmn) || 1;
+  const span = Math.max(raw * YZOOM, raw + 0.5, 0.5);
+  const mn = mid - span / 2, mx = mid + span / 2;
+
+  const py = v => pad.t + (1 - (v - mn) / (mx - mn)) * ih;
+
+  // 网格 + Y 轴
+  x.font = "10.5px Inter, PingFang SC, sans-serif";
+  x.textBaseline = "middle";
+  for (let i = 0; i <= 4; i++){
+    const v = mn + (mx - mn) * i / 4;
+    const y = py(v);
+    x.beginPath(); x.moveTo(pad.l, y); x.lineTo(W - pad.r, y);
+    x.strokeStyle = i === 0 ? "rgba(160,175,199,.42)" : "rgba(160,175,199,.16)";
+    x.lineWidth = 1; x.stroke();
+    x.fillStyle = "#8b98ac"; x.textAlign = "right";
+    x.fillText(Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(1), pad.l - 9, y);
+  }
+  if (p.unit){ x.textAlign = "left"; x.fillText(p.unit, 6, pad.t - 6); }
+
+  // X 轴刻度
+  x.textAlign = "center"; x.fillStyle = "#8b98ac";
+  const ticks = W < 460 ? 3 : 5;
+  // 跨度超过一天必须带日期：7 天跨度下多个刻度会是同一个"03:09"，无法区分是哪天
+  const spanH = (t1 - t0) / 3600000;
+  const withDate = spanH > 24;
+  for (let i = 0; i <= ticks; i++){
+    const t = t0 + (t1 - t0) * i / ticks;
+    const d = new Date(t), z = n => String(n).padStart(2, "0");
+    const hm = z(d.getHours()) + ":" + z(d.getMinutes());
+    x.fillText(withDate ? z(d.getMonth() + 1) + "-" + z(d.getDate()) + " " + hm : hm,
+               px(t), H - pad.b + 15);
+  }
+
+  // 面积
+  const grd = x.createLinearGradient(0, pad.t, 0, pad.t + ih);
+  grd.addColorStop(0, "rgba(109,139,181,.30)");
+  grd.addColorStop(1, "rgba(109,139,181,.02)");
+  x.beginPath();
+  x.moveTo(px(list[0].time), pad.t + ih);
+  list.forEach(o => x.lineTo(px(o.time), py(parseFloat(o.value))));
+  x.lineTo(px(list[list.length - 1].time), pad.t + ih);
+  x.closePath(); x.fillStyle = grd; x.fill();
+
+  // 线
+  x.beginPath();
+  list.forEach((o, i) => { const X = px(o.time), Y = py(parseFloat(o.value)); i ? x.lineTo(X, Y) : x.moveTo(X, Y); });
+  x.strokeStyle = "#6d8bb5"; x.lineWidth = 2; x.lineJoin = "round"; x.lineCap = "round"; x.stroke();
+
+  /* 点：按像素间距抽稀（minGap 由时间跨度决定，见上方说明）。
+     用"距上一个已画点"的实际像素距离判断，而不是 i % step —— 后者在
+     时间分布不均时仍会挤团（截图里7 天那条右侧的实心竖线就是这么来的）。
+     始终保留最后一个点前的抽稀结果，使最新值一定有标记。 */
+  let lastX = -1e9;
+  for (let i = 0; i < list.length; i++){
+    const o = list[i], X = px(o.time);
+    if (X - lastX < minGap && i !== list.length - 1) continue;
+    lastX = X;
+    x.beginPath(); x.arc(X, py(parseFloat(o.value)), 2, 0, 7);
+    x.fillStyle = "rgba(255,255,255,.92)"; x.fill();
+    x.strokeStyle = "#6d8bb5"; x.lineWidth = 1.3; x.stroke();
+  }
+
+  // 最新点
+  const lo = list[list.length - 1];
+  x.beginPath(); x.arc(px(lo.time), py(parseFloat(lo.value)), 4.2, 0, 7);
+  x.fillStyle = "#6d8bb5"; x.fill();
+  x.beginPath(); x.arc(px(lo.time), py(parseFloat(lo.value)), 8, 0, 7);
+  x.fillStyle = "rgba(109,139,181,.20)"; x.fill();
+
+  syncZoomer(mx - mn);
+}
+
+/* ── 纵轴缩放条 UI ──────────────────────────────────────────
+   滑块位置 = 档位索引在 [0, n-1] 上的归一化位置。
+   **默认档 4.2 位于数组正中**（下标 3/ 7 档），所以「归位」= 轨道中点，
+   向上更平缓、向下更尖锐，与视觉直觉一致。
+   用**离散档位**而非连续倍率：温度/湿度/信号强度的量级差异太大
+   （温度 0.3℃ 变化 vs 信号 20dBm 变化），连续调节几乎必然调过头。 */
+function yZoomIdx(){ let i = 0; while (i < YSPAN_STEPS.length && YSPAN_STEPS[i] !== YZOOM) i++; return i; }
+
+function syncZoomer(span){
+  const z = $("#zoomer");
+  if (!z) return;
+  const n = YSPAN_STEPS.length;
+  const idx = yZoomIdx();
+  const pos = idx / (n - 1);              // 0(底=最尖锐) → 1(顶=最平缓)
+  const defPos = Y_IDX_DEF / (n - 1);     // 默认档 4.2 恰为 0.5（正中）
+  const trk = z.querySelector(".zoomer__trk");
+  const knob = z.querySelector(".zoomer__knob");
+  const fill = z.querySelector(".zoomer__fill");
+
+  knob.style.bottom = (pos * 100) + "%";
+  // 填充从默认档中线向上生长；在默认档时高度为 0
+  fill.style.height = Math.max(0, (pos - defPos) * 100) + "%";
+  knob.textContent = YZOOM === YSPAN_STEPS[Y_IDX_DEF] ? "O" : "×" + YZOOM;//把此处默认文字改成O更简洁
+
+  // 顶部显示当前纵轴总跨度，让用户知道"每格代表多少"
+  const top = z.querySelector(".zoomer__top");
+  const per = span / 4;                    // 4 格网格
+  top.innerHTML = "<b>" + (per >= 10 ? per.toFixed(0) : per >= 1 ? per.toFixed(1) : per.toFixed(2)) +
+                  "</b>" + (per >= 1 ? " /格" : "/格");
+
+  const ab = z.querySelector(".zoomer__auto-btn");
+  const isDef = YZOOM === YSPAN_STEPS[Y_IDX_DEF];
+  ab.setAttribute("aria-pressed", String(isDef));
+  trk.setAttribute("aria-valuenow", String(YZOOM));
+}
+
+/* 由轨道上的指针位置反推档位。pos: 0=底部 1=顶部 */
+function yZoomFromPos(pos){
+  const n = YSPAN_STEPS.length;
+  const i = Math.round(Math.max(0, Math.min(1, pos)) * (n - 1));
+  return YSPAN_STEPS[i];
+}
+
+/* 滑块拖动：Pointer Events 统一鼠标/触摸/手写笔，setPointerCapture 保证
+   拖出轨道范围后仍持续接收事件。用 rAF 节流把重绘压到每帧一次。 */
+let zDrag = null, zRaf = 0;
+function bindZoomer(){
+  const trk = $("#zTrk");
+  if (!trk) return;
+
+  const posOf = e => {
+    const r = trk.getBoundingClientRect();
+    return 1 - (e.clientY - r.top) / (r.height || 1);   // 翻转：顶部=1
+  };
+  const apply = pos => {
+    const z = yZoomFromPos(pos);
+    if (z !== YZOOM){
+      YZOOM = z;
+      cancelAnimationFrame(zRaf);
+      zRaf = requestAnimationFrame(redrawChart);
+    }
+  };
+
+  trk.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    zDrag = e.pointerId;
+    trk.setPointerCapture(e.pointerId);
+    apply(posOf(e));
+  });
+  trk.addEventListener("pointermove", e => {
+    if (zDrag !== e.pointerId) return;
+    apply(posOf(e));
+  });
+  const end = e => {
+    if (zDrag !== e.pointerId) return;
+    zDrag = null;
+    if (trk.hasPointerCapture(e.pointerId)) trk.releasePointerCapture(e.pointerId);
+  };
+  trk.addEventListener("pointerup", end);
+  trk.addEventListener("pointercancel", end);
+
+  // 键盘可达：上下方向键调档，Home 回到默认档（4.2）
+  trk.addEventListener("keydown", e => {
+    const i = yZoomIdx();
+    if (e.key === "ArrowUp"){ YZOOM = YSPAN_STEPS[Math.min(YSPAN_STEPS.length - 1, i + 1)]; }
+    else if (e.key === "ArrowDown"){ YZOOM = YSPAN_STEPS[Math.max(0, i - 1)]; }
+    else if (e.key === "Home"){ YZOOM = YSPAN_STEPS[Y_IDX_DEF]; }
+    else return;
+    e.preventDefault();
+    redrawChart();
+  });
+
+  // 归位按钮：回到默认档 4.2（轨道正中）
+  $("#zoomer").querySelector(".zoomer__auto-btn").addEventListener("click", () => {
+    YZOOM = YSPAN_STEPS[Y_IDX_DEF];
+    redrawChart();
+  });
+}
+
+/* 重绘当前图表（滑块拖动时调用）。数据已在 M.list 里，不重新请求。 */
+function redrawChart(){
+  if (!M.id || !M.done || !M.list || !M.p || M.p.isText) return;
+  const cv = $("#cv");
+  if (!cv) return;
+  drawChart(M.list, M.p);
+}
+
+function drawTable(list, p){
+  const rows = list.slice().reverse();
+  const t = document.createElement("div");
+  t.className = "tbl-wrap";
+  t.style.maxHeight = "320px";
+  t.innerHTML = "<table><thead><tr><th>时间</th><th>" + p.name + (p.unit ? " (" + p.unit + ")" : "") + "</th></tr></thead><tbody></tbody></table>";
+  const tb = t.querySelector("tbody");
+  rows.forEach(o => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = '<td class="mono" style="color:var(--tx-2)"></td><td class="v"></td>';
+    tr.children[0].textContent = fmtTime(o.time);
+    tr.children[1].textContent = o.value;
+    tb.appendChild(tr);
+  });
+  $("#mBody").innerHTML = "";
+  $("#mBody").appendChild(t);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   11. 设置
+   ═══════════════════════════════════════════════════════════ */
+function openDrawer(){
+  closeOff();
+  $("#fPid").value = CFG.pid;
+  $("#fDev").value = CFG.dev;
+  $("#fTok").value = CFG.tok;
+  $("#maskDr").classList.add("show");
+  document.body.style.overflow = "hidden";
+}
+/* 只关闭历史弹窗，保留侧栏面板与其分组状态。
+   历史弹窗是从属性/阈值面板里点卡片打开的，属于"下一层"，
+   关闭它应回到来处（面板），而不是连面板一起收掉。 */
+function closeHistory(){
+  $("#mask").classList.remove("show");
+  M.id = null; M.done = false;
+  zDrag = null;
+  cancelAnimationFrame(zRaf);
+  syncScrollLock();
+  syncVeil();
+}
+
+function closeAll(){
+  $("#mask").classList.remove("show");
+  $("#maskDr").classList.remove("show");
+  $("#offMask").classList.remove("show");
+  $("#panel").classList.remove("open");
+  document.body.classList.remove("panel-open");
+  syncScrollLock();
+  syncVeil();
+  M.id = null; M.done = false;
+}
+
+/* 侧栏分组切换：概览不打开面板，props/thr 打开对应分区 */
+const GRP_META = {
+  main:  { title:null },
+  props: { title:"物模型属性", sub:"点击任意属性查看历史曲线" },
+  thr:   { title:"阈值设置", sub:"拖动滑轨调整，松手即下发写入 AT24C02" }
+};
+function setGroup(grp){
+  $$("#rail .rail-dot").forEach(b => b.classList.toggle("is-on", b.dataset.grp === grp));
+  const meta = GRP_META[grp] || GRP_META.main;
+  if (!meta.title){                       // 概览：收起面板
+    $("#panel").classList.remove("open");
+    document.body.classList.remove("panel-open");
+    syncScrollLock();
+    syncVeil();
+    return;
+  }
+  $("#panelTitle").textContent = meta.title;
+  $("#panelSub").textContent = meta.sub;
+  $("#panelProps").hidden = grp !== "props";
+  $("#panelThr").hidden   = grp !== "thr";
+  $("#panel").classList.add("open");
+  document.body.classList.add("panel-open");
+  syncScrollLock();
+  syncVeil();                             // 手机端：面板打开时虚化主界面
+  layoutPanel();                          // 打开后才有真实宽度，重新分配列
+}
+
+/* ═══════════════════════════════════════════════════════════
+   12. 启动
+   ═══════════════════════════════════════════════════════════ */
+function startPolling(){
+  clearInterval(timer);
+  timer = setInterval(() => {
+    if (document.hidden || M.id) return;
+    refresh(false);
+  }, POLL_MS);
+}
+
+function boot(){
+  /* 先落定视图模式（手动选择优先，否则按视口宽度），
+     再建卡片 —— layoutPanel 依赖当前模式决定列数。 */
+  applyMode(currentMode());
+  buildCards();
+  $("#refTx").textContent = "刷新";
+
+  /* 恢复侧栏折叠态：桌面/移动各自记忆；移动端首次默认收起。
+     同时补上 aria-expanded —— 原来只加 class 不同步 aria，
+     屏幕阅读器仍读到 HTML 里硬编码的 aria-expanded="true"，与实际状态不一致。 */
+  setRail(readRail(), false);
+
+  $("#btnRef").addEventListener("click", () => refresh(true));
+  $("#drClose").addEventListener("click", closeAll);
+  $("#mClose").addEventListener("click", closeHistory);
+
+  /* 侧栏：折叠切换（展开时移动端同步显示毛玻璃遮罩） */
+  $("#railTg").addEventListener("click", () => setRail(!document.body.classList.contains("rail-off")));
+
+  /* 手机视图：「···」唤出/收起导航浮层。桌面端该按钮 display:none，不会有交互。 */
+  $("#railFab").addEventListener("click", () => setRail(!document.body.classList.contains("rail-off")));
+
+  /* 侧栏：分组切换。浮层形态下选完即收起 —— 否则菜单会一直悬在内容上挡视线。 */
+  $("#rail").addEventListener("click", e => {
+    const b = e.target.closest(".rail-dot");
+    if (b){
+      setGroup(b.dataset.grp);
+      if (railIsFloat()) setRail(true);
+    }
+  });
+  $("#panelX").addEventListener("click", () => setGroup("main"));
+
+  /* 点毛玻璃遮罩：先关面板（若开），否则收起侧栏。不锁滚动。 */
+  $("#railVeil").addEventListener("click", () => {
+    if ($("#panel").classList.contains("open")) return setGroup("main");
+    setRail(true);
+  });
+
+  /* 视图模式切换：手机 / 电脑 */
+  $("#railSeg").addEventListener("click", e => {
+    const b = e.target.closest(".rail-seg__b");
+    if (!b) return;
+    const m = b.dataset.mode;
+    try{ localStorage.setItem(LS_MODE, m); }catch(e){}
+    applyMode(m);
+    setRail(readRail(), false);   // 切模式后按目标视口的折叠态重置
+    toast(m === "mobile" ? "已切换到手机视图" : "已切换到电脑视图", "info");
+  });
+
+  /* 离线告警弹窗 */
+  $("#offBtn").addEventListener("click", openOff);
+  $("#offX").addEventListener("click", closeOff);
+  $("#offMask").addEventListener("click", e => { if (e.target === $("#offMask")) closeOff(); });
+
+  $("#mask").addEventListener("click", e => { if (e.target === $("#mask")) closeHistory(); });
+  $("#maskDr").addEventListener("click", e => { if (e.target === $("#maskDr")) closeAll(); });
+  document.addEventListener("keydown", e => {
+    if (e.key !== "Escape") return;
+    if ($("#offMask").classList.contains("show")) return closeOff();   // 顶层优先关闭
+    if ($("#maskDr").classList.contains("show")) return closeAll();
+    if ($("#mask").classList.contains("show")) return closeHistory(); // 回到属性面板，而非主界面
+    if ($("#panel").classList.contains("open")) return setGroup("main");
+    if ($("#railVeil").classList.contains("show")) return setRail(true);
+    closeAll();
+  });
+
+  $("#seg").addEventListener("click", e => {
+    const b = e.target.closest("button[data-h]");
+    if (!b) return;
+    $$("#seg button").forEach(x => x.classList.remove("on"));
+    b.classList.add("on");
+    M.hours = +b.dataset.h;
+    M.done = false;
+    zDrag = null;                          // 轨道会被重建，释放旧的指针捕获
+    // 字符串类型本来就不渲染图表区，无需显示"正在读取"（否则闪一下空白卡片）
+    $("#chartBox").hidden = !!(M.p && M.p.isText);
+    if (M.p && !M.p.isText){
+      $("#chartBox").innerHTML = '<div class="c-empty"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>正在读取…</div>';
+    }
+    loadHist();
+  });
+
+  $("#drSave").addEventListener("click", () => {
+    CFG = {
+      pid: $("#fPid").value.trim() || DEF.pid,
+      dev: $("#fDev").value.trim() || DEF.dev,
+      tok: $("#fTok").value.trim() || DEF.tok
+    };
+    try{ localStorage.setItem("onenet_cfg", JSON.stringify(CFG)); }catch(e){}
+    Object.keys(spark).forEach(k => delete spark[k]);
+    Object.keys(CUR).forEach(k => delete CUR[k]);
+    closeAll();
+    toast("配置已保存，正在连接…", "info");
+    setTimeout(() => refresh(true), 260);
+  });
+  $("#drReset").addEventListener("click", () => {
+    CFG = Object.assign({}, DEF);
+    $("#fPid").value = CFG.pid; $("#fDev").value = CFG.dev; $("#fTok").value = CFG.tok;
+    try{ localStorage.removeItem("onenet_cfg"); }catch(e){}
+    toast("已恢复默认参数，点「保存并连接」生效", "info");
+  });
+
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(false); });
+  let rt = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(rt);
+    rt = setTimeout(() => {
+      layoutPanel();
+      if ($("#mask").classList.contains("show")) redrawChart();  // canvas 宽度变了会拉伸，需重绘
+    }, 180);
+  });
+  /* 跨越 720px 时 rail 在「常驻竖条」与「··· 浮层」两种形态间切换，
+     必须按新形态重读状态，否则会出现"浮层开着但没入口"或"竖条该展开却收着"。 */
+  if (MQ_NARROW.addEventListener) MQ_NARROW.addEventListener("change", () => {
+    setRail(readRail(), false);
+  });
+  /* 跨越 760px 断点时按目标视口重读折叠态并重算遮罩。
+     仅在"自动"模式（无手动选择）下生效 —— 手动选择后视口变化不应覆盖用户意图。 */
+  if (MQ_MOB.addEventListener) MQ_MOB.addEventListener("change", () => {
+    let forced = null;
+    try{ forced = localStorage.getItem(LS_MODE); }catch(e){}
+    if (forced === "mobile" || forced === "desktop") return;
+    applyMode(currentMode());
+    setRail(readRail(), false);
+  });
+
+  refresh(true);
+  startPolling();
+}
+
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+else boot();
+</script>
+</body>
+</html>
