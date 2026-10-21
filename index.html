@@ -366,8 +366,27 @@ body.panel-open .wrap{padding-right:min(580px,92vw)}
 body[data-mode="mobile"] .dev-swipe{
   display:flex;gap:0;overflow-x:auto;scroll-snap-type:x mandatory;
   -webkit-overflow-scrolling:touch;scrollbar-width:none;
-  /* 底部留出分页圆点的位置 */
-  padding-bottom:14px;      /* 底部给分页圆点留的净空，压缩到最小 */
+  /* 不留底部空白。
+     阴影问题另有解法：给滑动区内的 hero 单独设一个"收敛"的阴影
+     （见下方 .dev-swipe .hero 的 box-shadow），
+     让它完全落在容器内，就不需要用 padding 换阴影空间，
+     卡片与下方按钮的间距就能和独立控制保持一致。 */
+  padding-bottom:0;
+}
+/* 滑动区内的 hero：阴影收敛版。
+   .glass 默认 --sh-float 是 0 18px 44px，向下延伸约 40px；
+   而 .dev-swipe 是 overflow 滚动容器，会把溢出的阴影裁掉
+   （表现为"阴影被下方模块遮住"）。
+   若靠给容器加 padding-bottom 留空间，卡片与按钮之间就会多出一条空隙带。
+   这里把阴影的垂直偏移与模糊都收小，让它完整落在容器内：
+   向上偏移保持不变（负责上方的立体感），
+   向下的偏移与模糊压到 12px 以内，视觉上仍自然但不再溢出。 */
+body[data-mode="mobile"] .dev-swipe .hero{
+  margin-bottom:clamp(16px,2vw,26px);
+  box-shadow:
+    8px 8px 20px rgba(160,175,199,.34),
+    -8px -8px 20px rgba(255,255,255,.92),
+    0 6px 12px -6px rgba(120,140,172,.45);
 }
 body[data-mode="mobile"] .dev-swipe::-webkit-scrollbar{display:none}
 /* 外层容器：箭头与圆点定位在这里，不随滑动内容移动 */
@@ -375,13 +394,17 @@ body[data-mode="mobile"] .dev-swipe::-webkit-scrollbar{display:none}
 /* 右缘液态玻璃小圆点 + 双左箭头（<<）：提示"右边还有内容"。
    纯图形，不用文字。只在右缘做一个 —— 左缘再加一个会挡住卡片内容。 */
 .dev-hint{
-  position:absolute;top:0;right:0;bottom:14px;z-index:3;
+  /* 箭头浮在卡片右缘中部。top/bottom 用百分比，
+     使它相对整块内容（含 hero 的下外边距）居中在卡片区域附近，
+     不随容器底部的空白带偏移。 */
+  position:absolute;top:0;right:0;bottom:0;z-index:3;
   width:40px;
   display:flex;align-items:center;justify-content:center;
   opacity:0;transition:opacity .3s var(--ease);
   cursor:pointer;
+  pointer-events:none;      /* 默认不挡手势；展开时再启用点击 */
 }
-.dev-hint.is-on{opacity:1}
+.dev-hint.is-on{opacity:1;pointer-events:auto}
 .dev-hint::before{
   content:'';position:absolute;inset:0;pointer-events:none;
   background:linear-gradient(to left, rgba(255,255,255,.55) 0%, rgba(255,255,255,.2) 45%, rgba(255,255,255,0) 100%);
@@ -402,10 +425,13 @@ body[data-mode="mobile"] .dev-swipe::-webkit-scrollbar{display:none}
 .dev-hint:active .dev-hint__arrow{transform:scale(.95)}
 .dev-hint__arrow svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .dev-hint__arrow svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
-/* 底部圆点分页指示器：几台设备就几个点，当前项拉长 */
-/* 底部分页圆点：贴底居中，占位尽量小 */
+/* 分页圆点：**放在卡片内部**底部居中。
+   放在滑动区外面的话，容器必须留出空白才能容纳，
+   而 .dev-swipe 是 overflow 滚动容器，会把卡片阴影（--sh-float 0 18px 44px）
+   的下半截裁掉 —— 表现为"阴影被下方模块遮住"。
+   放进卡片内则零额外占位，阴影完整，圆点还随卡片一起滑动。 */
 .dev-dots{
-  position:absolute;left:0;right:0;bottom:2px;z-index:3;
+  position:absolute;left:0;right:0;bottom:9px;z-index:2;
   display:flex;align-items:center;justify-content:center;gap:5px;
   pointer-events:none;
 }
@@ -2454,9 +2480,12 @@ function buildOverview(focusIdx){
     return;
   }
 
-  /* 手机端：滑动区 + 右缘箭头 + 底部圆点。
-     结构上分两层：.dev-swipe（真正横向滚动的）套在 .dev-carousel 里，
-     箭头和圆点放在外层 —— 放里面会跟着内容一起横向滑走，就固定不住了。 */
+  /* 手机端：滑动区 + 右缘箭头。
+     **分页圆点放进卡片内部**（每张 hero 底部居中），
+     不放在滑动区外面 —— 放外面就得给容器留出空白，
+     而 .dev-swipe 是 overflow 滚动容器，会把卡片阴影的下半截裁掉
+     （--sh-float 是 0 18px 44px，向下延伸约 30px+）。
+     放进卡片内则零额外占位，阴影完整，圆点还跟着卡片一起滑动。 */
   wrap.className = "dev-carousel";
   wrap.innerHTML =
     '<div class="dev-swipe" id="devSwipe"></div>' +
@@ -2464,28 +2493,27 @@ function buildOverview(focusIdx){
       '<span class="dev-hint__arrow"><svg viewBox="0 0 24 24">' +
         '<path d="M11 5l-7 7 7 7"/><path d="M18 5l-7 7 7 7"/>' +
       '</svg></span>' +
-    '</div>' +
-    '<div class="dev-dots" id="devDots"></div>';
+    '</div>';
 
   const swipe = $("#devSwipe");
-  DEVICES.forEach(d => {
+  const startIdx = (focusIdx >= 0 && focusIdx < DEVICES.length) ? focusIdx : 0;
+  DEVICES.forEach((d, i) => {
     const slide = document.createElement("div");
     slide.className = "dev-slide";
     slide.innerHTML = heroHTML(d.id, d.id);
+    // 分页圆点：每张卡片底部居中一份，当前页的高亮
+    const dots = document.createElement("div");
+    dots.className = "dev-dots";
+    DEVICES.forEach((_, j) => {
+      const b = document.createElement("span");
+      b.className = "dev-dot" + (j === i ? " is-on" : "");
+      dots.appendChild(b);
+    });
+    slide.querySelector(".hero").appendChild(dots);
     swipe.appendChild(slide);
   });
 
-  // 底部分页圆点（纯图形，无文字）
-  const dots = $("#devDots");
-  const startIdx = (focusIdx >= 0 && focusIdx < DEVICES.length) ? focusIdx : 0;
-  DEVICES.forEach((d, i) => {
-    const b = document.createElement("span");
-    b.className = "dev-dot" + (i === startIdx ? " is-on" : "");
-    b.dataset.i = i;
-    dots.appendChild(b);
-  });
-
-  // 滑动时同步箭头显隐与圆点高亮
+  // 滑动时同步箭头显隐与各卡片内圆点的高亮
   const sync = () => {
     const w = swipe.clientWidth || 1;
     const idx = Math.round(swipe.scrollLeft / w);
@@ -2493,7 +2521,10 @@ function buildOverview(focusIdx){
     /* 只有右边还有设备时才显示提示圆点（双左箭头 << 表示往左滑看过去）。
        左侧不加箭头 —— 会挡住卡片内容。 */
     $("#devHint").classList.toggle("is-on", idx < max);
-    $$("#devDots .dev-dot").forEach((el, i) => el.classList.toggle("is-on", i === idx));
+    // 每张卡片里都有一份圆点，高亮当前页对应的那个
+    $$(".dev-slide").forEach((slide, si) => {
+      $$(".dev-dot", slide).forEach((el, di) => el.classList.toggle("is-on", di === idx));
+    });
   };
   swipe.addEventListener("scroll", sync, { passive:true });
 
