@@ -139,6 +139,9 @@ body::before{
 .dot{width:9px;height:9px;border-radius:50%;flex:none;position:relative;background:var(--off)}
 .pill.on .dot{background:var(--ok)}
 .pill.off .dot{background:var(--bad)}
+/* 部分离线（仅统一控制可能出现）：黄色圆点，一眼看出"有在线也有离线" */
+.pill.part .dot{background:var(--warn)}
+.pill.part{background:rgba(255,255,255,.5)}
 .dot::after{
   content:'';position:absolute;inset:-5px;border-radius:50%;
   border:1.5px solid currentColor;opacity:0;
@@ -317,7 +320,8 @@ body.panel-open .wrap{padding-right:min(580px,92vw)}
   width:9px;height:9px;flex:none;border-radius:50%;
   background:#b9c3d2;box-shadow:0 0 0 3px rgba(185,195,210,.22);
 }
-.dev-item.is-on .dev-item__dot{background:#4cb391;box-shadow:0 0 0 3px rgba(76,179,145,.24)}
+.dev-item.is-on .dev-item__dot{background:var(--ok);box-shadow:0 0 0 3px rgba(95,158,160,.24)}
+.dev-item.is-off .dev-item__dot{background:var(--bad);box-shadow:0 0 0 3px rgba(191,123,123,.24)}
 .dev-item__name{
   font-size:13.5px;font-weight:500;font-family:ui-monospace,Menlo,Consolas,monospace;
   min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
@@ -349,8 +353,11 @@ body.panel-open .wrap{padding-right:min(580px,92vw)}
 /* ═══════════════════════════════════════════════════════════
    概览多设备：手机端横向滑动 /电脑端每台一行
    ═══════════════════════════════════════════════════════════ */
-body[data-ctrl="all"] .dev-swipe{display:block}
+/* 滑动区/行区由 JS 按模式生成对应结构，CSS 只负责隐藏"不适用"的那个。
+   注意：display 必须交给带 body[data-mode] 的规则统一决定，
+   这里不要另起display:block —— 会与手机端的 flex 打架。 */
 .dev-swipe{display:none}
+.dev-rows{display:none}
 /* 手机端：横向 scroll-snap 滑动，一屏一台设备。
    **不用负 margin 抵消留白** —— body 的实际左右留白受 clamp() 与
    视口宽度影响，写死数值必然对不上（实测差 3px，撑出横向滚动条）。
@@ -359,8 +366,54 @@ body[data-ctrl="all"] .dev-swipe{display:block}
 body[data-mode="mobile"] .dev-swipe{
   display:flex;gap:0;overflow-x:auto;scroll-snap-type:x mandatory;
   -webkit-overflow-scrolling:touch;scrollbar-width:none;
+  /* 底部留出分页圆点的位置 */
+  padding-bottom:26px;
 }
 body[data-mode="mobile"] .dev-swipe::-webkit-scrollbar{display:none}
+/* 外层容器：箭头与圆点定位在这里，不随滑动内容移动 */
+.dev-carousel{position:relative}
+/* 右缘液态玻璃小圆点 + 双左箭头（<<）：提示"右边还有内容"。
+   纯图形，不用文字。只在右缘做一个 —— 左缘再加一个会挡住卡片内容。 */
+.dev-hint{
+  position:absolute;top:0;right:0;bottom:26px;z-index:3;
+  width:40px;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .3s var(--ease);
+  cursor:pointer;
+}
+.dev-hint.is-on{opacity:1}
+.dev-hint::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(to left, rgba(255,255,255,.55) 0%, rgba(255,255,255,.2) 45%, rgba(255,255,255,0) 100%);
+}
+/* 液态玻璃小圆点：半透明磨砂 + 内高光，不遮挡内容 */
+.dev-hint__arrow{
+  position:relative;width:30px;height:30px;border-radius:50%;
+  display:grid;place-items:center;
+  background:rgba(255,255,255,.42);
+  -webkit-backdrop-filter:blur(10px) saturate(160%);backdrop-filter:blur(10px) saturate(160%);
+  border:1px solid rgba(255,255,255,.62);
+  box-shadow:0 3px 10px -3px rgba(120,135,160,.3), inset 0 1px 0 rgba(255,255,255,.55);
+  color:rgba(90,105,130,.9);
+  pointer-events:none;
+  transition:transform .22s var(--ease),background .22s var(--ease);
+}
+.dev-hint:hover .dev-hint__arrow{transform:scale(1.1);background:rgba(255,255,255,.56)}
+.dev-hint:active .dev-hint__arrow{transform:scale(.95)}
+.dev-hint__arrow svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.dev-hint__arrow svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+/* 底部圆点分页指示器：几台设备就几个点，当前项拉长 */
+.dev-dots{
+  position:absolute;left:0;right:0;bottom:0;z-index:3;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  pointer-events:none;
+}
+.dev-dot{
+  width:6px;height:6px;border-radius:999px;
+  background:rgba(125,143,184,.32);
+  transition:width .3s var(--ease),background .3s var(--ease);
+}
+.dev-dot.is-on{width:18px;background:var(--gr-accent)}
 body[data-mode="mobile"] .dev-swipe::-webkit-scrollbar{display:none}
 .dev-slide{
   flex:0 0 100%;scroll-snap-align:center;min-width:0;
@@ -370,25 +423,38 @@ body[data-mode="mobile"] .dev-swipe::-webkit-scrollbar{display:none}
      否则 scroll-snap 的"一屏一台"会偏移。 */
   box-sizing:border-box;
 }
-/* 设备名贴在卡片右下角 */
+/* 设备名贴在卡片右下角；配色跟随该设备的在线状态
+   （在线=莫兰迪青绿，离线=莫兰迪砖红，与站点主色体系一致） */
 .dev-name-tag{
   position:absolute;right:14px;bottom:12px;
   padding:4px 10px;border-radius:999px;
   background:rgba(125,143,184,.16);color:var(--tx-2);
   font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace;
-  pointer-events:none;
+  display:inline-flex;align-items:center;gap:6px;
+  transition:background .3s var(--ease),color .3s var(--ease);
 }
+/* 前置小圆点，颜色即状态 */
+.dev-name-tag::before{
+  content:'';width:6px;height:6px;flex:none;border-radius:50%;
+  background:#b9c3d2;transition:background .3s var(--ease),box-shadow .3s var(--ease);
+}
+.dev-name-tag.is-on{background:rgba(95,158,160,.15);color:#4a7f81}
+.dev-name-tag.is-on::before{background:var(--ok);box-shadow:0 0 0 2.5px rgba(95,158,160,.22)}
+.dev-name-tag.is-off{background:rgba(191,123,123,.15);color:#a16464}
+.dev-name-tag.is-off::before{background:var(--bad);box-shadow:0 0 0 2.5px rgba(191,123,123,.22)}
 /* 电脑端：每台设备各占一行，依次向下排 */
 body[data-mode="desktop"] .dev-rows{display:flex;flex-direction:column;gap:26px}
-.dev-rows{display:none}
 .dev-row{position:relative}
 .dev-row__head{
   display:flex;align-items:center;gap:10px;margin-bottom:12px;
   font-size:13px;font-weight:500;color:var(--tx-2);
   font-family:ui-monospace,Menlo,Consolas,monospace;
 }
-.dev-row__dot{width:8px;height:8px;border-radius:50%;background:#b9c3d2;flex:none}
-.dev-row.is-on .dev-row__dot{background:#4cb391;box-shadow:0 0 0 3px rgba(76,179,145,.24)}
+.dev-row__dot{width:8px;height:8px;border-radius:50%;background:#b9c3d2;flex:none;
+  transition:background .3s var(--ease),box-shadow .3s var(--ease)}
+/* 行头圆点与卡片标签同一套两态色（绿=在线 / 红=离线） */
+.dev-row.is-on .dev-row__dot{background:var(--ok);box-shadow:0 0 0 3px rgba(95,158,160,.24)}
+.dev-row.is-off .dev-row__dot{background:var(--bad);box-shadow:0 0 0 3px rgba(191,123,123,.24)}
 
 /* ═══════════════════════════════════════════════════════════
    内容面板（属性 / 阈值 / 设备管理）
@@ -435,6 +501,9 @@ body[data-mode="desktop"] .dev-rows{display:flex;flex-direction:column;gap:26px}
 .off-modal__ico{width:54px;height:54px;margin:0 auto 16px;border-radius:18px;
   display:grid;place-items:center;background:rgba(191,123,123,.13)}
 .off-modal__ico svg{width:26px;height:26px;stroke:var(--bad);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+/* 部分离线的详情弹窗用黄色图标，与胶囊圆点保持一致 */
+body[data-off="part"] .off-modal__ico{background:rgba(201,154,106,.14)}
+body[data-off="part"] .off-modal__ico svg{stroke:var(--warn)}
 .off-modal h3{font-size:18px;font-weight:600;margin-bottom:10px}
 .off-modal p{font-size:13.5px;line-height:1.78;color:var(--tx-2)}
 .off-x{
@@ -740,7 +809,7 @@ body[data-mode="mobile"] .rail-veil.show{display:block;animation:fade .3s var(--
 .m-devopt.is-on{background:var(--gr-accent);color:#fff;
   box-shadow:0 6px 14px -7px rgba(93,123,166,.66), inset 0 1px 0 rgba(255,255,255,.28)}
 .m-devopt__dot{width:7px;height:7px;flex:none;border-radius:50%;background:#b9c3d2}
-.m-devopt.is-online .m-devopt__dot{background:#4cb391}
+.m-devopt.is-online .m-devopt__dot{background:var(--ok)}
 .m-devopt.is-on.is-online .m-devopt__dot{background:#c8fbe6}
 .m-stats{display:flex;gap:clamp(16px,2.6vw,32px);flex-wrap:wrap;margin-bottom:20px}
 .m-stat-k{font-size:10.5px;color:var(--tx-3);letter-spacing:.1em;text-transform:uppercase}
@@ -1640,18 +1709,30 @@ function banner(title, body){
   const btn = $("#offBtn");
   if (!title){
     btn.className = "pill on off-btn";
+    document.body.dataset.off = "on";
     $("#offTx").textContent = "在线";
     return;
   }
-  btn.className = "pill off off-btn";
-  const SHORT = { "设备当前离线":"设备离线", "设备未激活":"未激活", "无法连接 OneNET 平台":"连接失败" };
+  /* 「部分离线」单独一类：黄色圆点 + 可点开看详情。
+     它既不是全在线也不是全离线，胶囊文案要能表达"有但不全"。
+     body[data-off] 让详情弹窗的图标跟着变色。 */
+  const partial = (title === "部分设备离线");
+  btn.className = "pill " + (partial ? "part" : "off") + " off-btn";
+  document.body.dataset.off = partial ? "part" : "off";
+  const SHORT = {
+    "设备当前离线":"设备离线", "设备未激活":"未激活",
+    "无法连接 OneNET 平台":"连接失败", "部分设备离线":"部分离线"
+  };
   $("#offTx").textContent = SHORT[title] || "异常";
   $("#offT").textContent = title;
   $("#offB").textContent = body || "";
 }
 function openOff(){
-  // 仅离线态可点开详情；在线态按钮是纯状态展示
-  if (ONLINE) return;
+  /* 仅离线态可点开详情；在线态按钮是纯状态展示。
+     注意「部分离线」时 ONLINE 可能仍为 true（主设备在线），
+     所以要按按钮自身的 class 判断，不能只看 ONLINE。 */
+  const btn = $("#offBtn");
+  if (btn.classList.contains("on")) return;
   $("#offMask").classList.add("show");
   document.body.style.overflow = "hidden";
 }
@@ -2022,7 +2103,7 @@ function preview(id, v){
      故改为按当前主设备动态定位。 */
   const d = primaryDev();
   if (d){
-    const pfx = "h_" + d.label + "_" + (CTRL_MODE === "all" ? d.id : "main");
+    const pfx = "h_" + d.id + "_" + (CTRL_MODE === "all" ? d.id : "main");
     const slot = { temp_high:"TH", temp_low:"TL", humi_high:"HH", humi_low:"HL" }[id];
     if (slot){
       const el = $("#" + pfx + slot);
@@ -2170,8 +2251,10 @@ async function refresh(manual){
 
   try{
     /* 统一控制：并行刷新全部设备；
-       独立控制：只刷新当前选中设备（概览不展示其他设备，无需多刷）。 */
-    const list = CTRL_MODE === "all" ? DEVICES.slice() : targetDevices();
+       独立控制：也刷新全部 —— 设备管理列表要显示每台的在线状态，
+       概览标签的颜色也要跟着变；只刷选中设备会让其它设备的状态永远停在
+       首次加载时的快照。设备数量少（个位数），多几个请求可以接受。 */
+    const list = DEVICES.slice();
     const results = await Promise.all(list.map(refreshDevice));
 
     // 主设备视图装载（其他设备的状态留在各自槽里，概览多设备展示时直接读）
@@ -2179,7 +2262,11 @@ async function refresh(manual){
 
     const prim = primaryDev();
     const primRes = results.filter(r => prim && r.dev.id === prim.id)[0];
-    const unact = results.filter(r => r.unactivated);
+    /* 「未激活」只在**当前设备**未激活时才报。
+       别的设备未激活不该影响本机显示（统一控制下其它设备的问题
+       由「部分离线」分支去表达）。 */
+    const unact = results.filter(r => r.unactivated && prim && r.dev.id === prim.id);
+    const unactOther = results.filter(r => r.unactivated && prim && r.dev.id !== prim.id);
 
     if (unact.length){
       const r0 = unact[0];
@@ -2193,7 +2280,25 @@ async function refresh(manual){
     }
 
     ONLINE = primRes ? primRes.online : false;
-    if (!ONLINE){
+
+    /* 在线状态汇总。三种情况，不能只看主设备：
+         全在线   → 胶囊「在线」    绿色圆点
+         部分离线 → 胶囊「部分离线」 黄色圆点，列出离线设备
+         全部离线 → 胶囊「设备离线」 红色圆点
+   「部分离线」与模式无关 —— 只要注册了多台且有在线有离线就是这个状态；
+   它表达的是"整个控制链路里有一部分设备不通"，用户据此决定要不要去排查。 */
+    const onCnt  = results.filter(r => r.online).length;
+    const total  = results.length;
+    const offDevs= results.filter(r => !r.online);
+
+    if (total > 1 && onCnt > 0 && offDevs.length > 0){
+      banner("部分设备离线",
+        "在线 " + onCnt + "/" + total + " 台。离线：" +
+        offDevs.map(r => r.dev.label || r.dev.dev).join("、") +
+        "。离线设备的属性显示的是云端缓存值，控制命令可能无法送达；" +
+        (CTRL_MODE === "all" ? "统一控制的指令会照常下发到全部设备，在线的那几台会立即执行。"
+                             : "独立控制下，指令只发给你选中的那台。"));
+    }else if (!ONLINE){
       banner("设备当前离线",
         "平台最后一次收到数据是 " + fmtTime(LAST) + "（" + fmtAgo(LAST) + "）。" +
         "属性显示的是云端缓存值，控制命令可能无法送达，请检查 ESP8266 是否上电、Wi-Fi 是否连接。");
@@ -2202,15 +2307,24 @@ async function refresh(manual){
     }
 
     paint();
-    /* 设备状态圆点由 renderDevPanel() / paintOverview() 各自负责更新，
-       不需要在这里额外调用（此前误写了一个不存在的 renderDevBars()，
-       导致每次刷新都抛 ReferenceError，被 catch 捕获后误报"无法连接 OneNET 平台"）。 */
+    /* 设备状态圆点与列表项的在线/离线文字由paint 后的paintOverview()
+       负责概览部分；设备管理面板若正开着，需同步刷新列表状态。
+       （此前误写了一个不存在的 renderDevBars()，
+         导致每次刷新都抛 ReferenceError，被 catch 捕获后误报"无法连接OneNET 平台"。） */
+    if (!$("#panelDev").hidden) renderDevPanel();
     if ($("#panel").classList.contains("open") && !$("#panelProps").hidden) layoutPanel();
     if (manual){
-      const n = results.filter(r => r.online).length;
-      toast("已刷新 · " + (CTRL_MODE === "all"
-        ? n + "/" + results.length + " 台在线"
-        : (ONLINE ? "设备在线" : "设备离线")), ONLINE ? "ok" : "info");
+      if (CTRL_MODE === "all"){
+        // 有离线设备时用 err 色提示，避免"部分成功"被当成全好
+        const allOn = offDevs.length === 0;
+        toast("已刷新 · " + onCnt + "/" + total + " 台在线" +
+          (allOn ? "" : "（离线：" + offDevs.map(r => r.dev.label || r.dev.dev).join("、") + "）"),
+          allOn ? "ok" : "info");
+      }else{
+        toast("已刷新 · " + (ONLINE ? "设备在线" : "设备离线") +
+          (unactOther.length ? "（" + unactOther.map(r => r.dev.label || r.dev.dev).join("、") + " 未激活）" : ""),
+          ONLINE ? "ok" : "info");
+      }
     }
   }catch(e){
     ONLINE = false;
@@ -2258,7 +2372,13 @@ function paint(){
      · 手机端 —— 横向 scroll-snap 滑动，一屏一台
      · 电脑端 —— 每台设备各占一行，依次向下排
    每份 hero 用独立 id 前缀（h_<devId>_<slot>），避免 id 冲突。 */
+/* 概览区单台设备的 hero。
+   **devId 必须是设备 id**（不是 label）—— 下游 paintHero / devTagState
+   都用 devById(devId) 反查设备，传 label 会查不到（id 与 label 不一定相同），
+   表现为设备名标签的状态色不更新。显示文字才用 label。 */
 function heroHTML(devId, slot){
+  const dev = devById(devId);
+  const disp = dev ? (dev.label || dev.dev) : (devId || "");
   const pfx = "h_" + devId + "_" + slot;
   return '<section class="hero glass" data-hero="' + devId + '">' +
     '<div class="hero-top">' +
@@ -2295,12 +2415,14 @@ function heroHTML(devId, slot){
         '<span class="lo" id="' + pfx + 'HL">--</span><span class="u">%</span></div>' +
         '<div class="metric-s">上限 / 下限</div></div>' +
     '</div>' +
-    '<span class="dev-name-tag">' + (devId || "") + '</span>' +
+    '<span class="dev-name-tag" data-devtag="' + (devId || "") + '">' + disp + '</span>' +
   '</section>';
 }
 
-/* 构建概览区DOM。模式切换 / 增删设备后要重建。 */
-function buildOverview(){
+/* 构建概览区DOM。模式切换 / 增删设备后要重建。
+   focusIdx：手机端滑动区重建后定位到第几台（-1 表示保持最前）。
+   重建会清空滚动位置，切设备时必须指定目标索引，否则会跳回第一台。 */
+function buildOverview(focusIdx){
   const wrap = $("#heroWrap");
   if (!wrap) return;
   wrap.innerHTML = "";
@@ -2309,31 +2431,85 @@ function buildOverview(){
     // 独立控制：单台设备，结构与原来完全一致
     const d = primaryDev();
     wrap.className = "";
-    wrap.innerHTML = heroHTML(d ? d.label : "", "main");
+    wrap.innerHTML = heroHTML(d ? d.id : "", "main");
     return;
   }
 
   // 统一控制：手机端横向滑动 / 电脑端逐行
   const mobile = isMobileMode();
-  wrap.className = mobile ? "dev-swipe" : "dev-rows";
-  DEVICES.forEach(d => {
-    if (mobile){
-      const slide = document.createElement("div");
-      slide.className = "dev-slide";
-      slide.innerHTML = heroHTML(d.label, d.id);
-      wrap.appendChild(slide);
-    }else{
+  if (!mobile){
+    wrap.className = "dev-rows";
+    DEVICES.forEach(d => {
       const row = document.createElement("div");
       row.className = "dev-row";
       row.dataset.row = d.id;
       row.innerHTML = '<div class="dev-row__head">' +
         '<span class="dev-row__dot"></span><span class="dev-row__name"></span>' +
         '<span class="dev-row__st"></span></div>' +
-        heroHTML(d.label, d.id);
+        heroHTML(d.id, d.id);
       row.querySelector(".dev-row__name").textContent = d.label || d.dev;
       wrap.appendChild(row);
-    }
+    });
+    return;
+  }
+
+  /* 手机端：滑动区 + 右缘箭头 + 底部圆点。
+     结构上分两层：.dev-swipe（真正横向滚动的）套在 .dev-carousel 里，
+     箭头和圆点放在外层 —— 放里面会跟着内容一起横向滑走，就固定不住了。 */
+  wrap.className = "dev-carousel";
+  wrap.innerHTML =
+    '<div class="dev-swipe" id="devSwipe"></div>' +
+    '<div class="dev-hint dev-hint--next" id="devHint">' +
+      '<span class="dev-hint__arrow"><svg viewBox="0 0 24 24">' +
+        '<path d="M11 5l-7 7 7 7"/><path d="M18 5l-7 7 7 7"/>' +
+      '</svg></span>' +
+    '</div>' +
+    '<div class="dev-dots" id="devDots"></div>';
+
+  const swipe = $("#devSwipe");
+  DEVICES.forEach(d => {
+    const slide = document.createElement("div");
+    slide.className = "dev-slide";
+    slide.innerHTML = heroHTML(d.id, d.id);
+    swipe.appendChild(slide);
   });
+
+  // 底部分页圆点（纯图形，无文字）
+  const dots = $("#devDots");
+  const startIdx = (focusIdx >= 0 && focusIdx < DEVICES.length) ? focusIdx : 0;
+  DEVICES.forEach((d, i) => {
+    const b = document.createElement("span");
+    b.className = "dev-dot" + (i === startIdx ? " is-on" : "");
+    b.dataset.i = i;
+    dots.appendChild(b);
+  });
+
+  // 滑动时同步箭头显隐与圆点高亮
+  const sync = () => {
+    const w = swipe.clientWidth || 1;
+    const idx = Math.round(swipe.scrollLeft / w);
+    const max = DEVICES.length - 1;
+    /* 只有右边还有设备时才显示提示圆点（双左箭头 << 表示往左滑看过去）。
+       左侧不加箭头 —— 会挡住卡片内容。 */
+    $("#devHint").classList.toggle("is-on", idx < max);
+    $$("#devDots .dev-dot").forEach((el, i) => el.classList.toggle("is-on", i === idx));
+  };
+  swipe.addEventListener("scroll", sync, { passive:true });
+
+  // 点击圆点：滑到下一台
+  const curIdx = () => Math.round(swipe.scrollLeft / (swipe.clientWidth || 1));
+  $("#devHint").addEventListener("click", () => {
+    const i = curIdx() + 1;
+    if (i < 0 || i >= DEVICES.length) return;
+    swipe.scrollTo({ left:i * (swipe.clientWidth || 1), behavior:"smooth" });
+  });
+
+  // 重建后定位到目标台（切设备时用），否则保持最前
+  if (startIdx > 0){
+    const w = swipe.clientWidth || 1;
+    swipe.scrollLeft = startIdx * w;
+  }
+  sync();
 }
 
 /* 把某台设备的数据刷进它那一份 hero */
@@ -2346,7 +2522,15 @@ function paintHero(devId, slot){
   const dt = cur.datetime ? String(cur.datetime) : "";
   const m = dt.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
   const tEl = $("#" + pfx + "Time"), dEl = $("#" + pfx + "Date"), wEl = $("#" + pfx + "Week");
-  if (!tEl) return;
+  if (!tEl){
+    /* 找不到这份 hero 的节点，说明 DOM 与设备不匹配（切换设备后未重建等）。
+       这里**不能静默 return** —— 那会让页面停留在上一台设备的数据上，
+       用户看到的是"切了设备但卡片没变"。明确报错比静默错误好排查。 */
+    if (typeof console !== "undefined"){
+      console.warn("[OneNET] hero 节点缺失：", pfx, "（概览 DOM 未与设备同步）");
+    }
+    return;
+  }
   if (m){
     tEl.innerHTML = '<span>' + m[4] + ':' + m[5] + '</span><span class="sec">' + m[6] + '</span>';
     dEl.textContent = m[1] + "-" + m[2] + "-" + m[3];
@@ -2378,23 +2562,43 @@ function paintHero(devId, slot){
     const v = cur[pair[1]];
     set(pair[0], v != null ? fmtVal(v, P[pair[1]]) : "--");
   });
+
+  /* 卡片右下角的设备名标签：按该设备的在线状态着色。
+     标签的 data-devtag 就是 devId（heroHTML 里写死的），用属性选择器定位，
+     不依赖 id 前缀，避免与多设备动态 id 打架。 */
+  $$(".dev-name-tag[data-devtag='" + devId + "']").forEach(tag => {
+    tag.classList.remove("is-on", "is-off");
+    tag.classList.add(devTagState(devId));
+  });
+}
+
+/* 设备名标签的状态类：**只有两态** ——绿=在线 / 红=离线。
+   「部分离线」是整体链路的状态，只体现在顶栏胶囊上；
+   卡片标签若也染黄会让人误以为"这台设备有问题"，反而干扰判断。
+   （黄色仅用于 .pill.part 圆点。） */
+function devTagState(devId){
+  const d = devById(devId);
+  return (d && !dstate(devId).online) ? "is-off" : "is-on";
 }
 
 /* 刷新概览区所有设备的显示 */
 function paintOverview(){
   if (CTRL_MODE === "all"){
     DEVICES.forEach(d => {
+      // paintHero 内部会更新卡片右下角的设备名标签颜色（两态）
       paintHero(d.id, d.id);
+      // 行头圆点只在电脑端（.dev-row）存在，手机端是滑动卡片，没有行头
       const row = $(".dev-row[data-row='" + d.id + "']");
       if (!row) return;
       const st = dstate(d.id);
-      row.classList.toggle("is-on", !!st.online);
+      row.classList.remove("is-on", "is-off");
+      row.classList.add(devTagState(d.id));
       const stEl = row.querySelector(".dev-row__st");
       if (stEl) stEl.textContent = st.online ? "在线" : "离线";
     });
   }else{
     const d = primaryDev();
-    if (d) paintHero(d.label, "main");
+    if (d) paintHero(d.id, "main");
   }
 }
 
@@ -3033,7 +3237,8 @@ function renderDevPanel(){
     const st = dstate(d.id);
     const on = !!st.online;
     const row = document.createElement("div");
-    row.className = "dev-item" + (on ? " is-on" : "") + (!unified && d.id === SEL_DEV ? " is-sel" : "");
+    row.className = "dev-item" + (on ? " is-on" : " is-off") +
+      (!unified && d.id === SEL_DEV ? " is-sel" : "");
     row.dataset.id = d.id;
     row.innerHTML =
       '<span class="dev-item__dot"></span>' +
@@ -3042,15 +3247,43 @@ function renderDevPanel(){
     row.querySelector(".dev-item__name").textContent = d.label || d.dev;
     row.querySelector(".dev-item__st").textContent = on ? "在线" : "离线";
     if (!unified){
-      // 独立控制：点条目即切换当前控制对象
+      /* 独立控制：点条目即切换当前控制对象。
+         必须重新拉这台设备的数据 —— 独立控制的 refresh() 只刷新选中设备，
+         所以从离线设备切到另一台时，若不主动拉取，新主设备的状态槽是空的
+         （表现：界面不刷新、标签状态也不更新）。
+         这里直接调 refreshDevice()，成功后装载其状态再重绘。 */
       row.style.cursor = "pointer";
-      row.addEventListener("click", () => {
+      row.addEventListener("click", async () => {
+        if (d.id === SEL_DEV) return;
         switchPrimary(d.id);
+        /* 关键：概览 hero 的 id 带设备 id（h_<devId>_main），
+           换设备 = 换一套 id，DOM 必须重建。
+           不重建的话 paintHero(新id,"main") 找不到节点会直接 return，
+           页面就一直显示上一台设备的数据（用户看到的"卡片没切过去"）。
+           手机端统一控制是滑动区，重建后要滑到该设备那一页。 */
+        const di = DEVICES.map(x => x.id).indexOf(d.id);
+        buildOverview(di);
+        renderDevPanel();
+        const r = await refreshDevice(d);
         loadPrimaryState();
+        ONLINE = r.online;
+        // 状态胶囊要跟着当前设备走
+        if (r.unactivated){
+          banner("设备未激活",
+            "设备「" + (d.label || d.dev) + "」在平台上的状态是「未激活」，" +
+            "请核对固件里的 ONENET_PRODUCT_ID / ONENET_DEVICE_NAME / ONENET_MQTT_TOKEN。");
+        }else if (!r.online){
+          banner("设备当前离线",
+            "平台最后一次收到数据是 " + fmtTime(LAST) + "（" + fmtAgo(LAST) + "）。" +
+            "属性显示的是云端缓存值，控制命令可能无法送达，请检查 ESP8266 是否上电、Wi-Fi 是否连接。");
+        }else{
+          banner(null);
+        }
         paint();
         renderDevPanel();
         renderBcastHint();
-        toast("已切换到 " + (d.label || d.dev), "info");
+        toast("已切换到 " + (d.label || d.dev) + " · " + (r.online ? "在线" : "离线"),
+              r.online ? "ok" : "info");
       });
     }
     list.appendChild(row);
