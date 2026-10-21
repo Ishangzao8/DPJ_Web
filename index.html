@@ -382,11 +382,28 @@ body[data-mode="mobile"] .dev-swipe{
    向上偏移保持不变（负责上方的立体感），
    向下的偏移与模糊压到 12px 以内，视觉上仍自然但不再溢出。 */
 body[data-mode="mobile"] .dev-swipe .hero{
+  /* 滑动区里的 hero 阴影收敛版。
+     .glass 默认 --sh-float 是 0 18px 44px，向下延伸约 40px；
+     .dev-swipe 是 overflow 滚动容器，溢出的阴影会被裁掉
+     （表现为"阴影被下方模块遮住"）。
+     若靠给容器加 padding-bottom 留空间，卡片与按钮之间就会多出一条空隙带
+     （用户对比独立控制时指出这个差异）。
+     所以改成：阴影向下偏移与模糊都收小到 16px 以内，
+     由 margin-bottom 提供的空间承载，容器无需额外 padding。
+     阴影必须留在 hero 上 —— 挪到 .dev-slide 会失去圆角，形状不匹配。 */
   margin-bottom:clamp(16px,2vw,26px);
   box-shadow:
-    8px 8px 20px rgba(160,175,199,.34),
-    -8px -8px 20px rgba(255,255,255,.92),
-    0 6px 12px -6px rgba(120,140,172,.45);
+    6px 6px 16px rgba(160,175,199,.32),
+    -6px -6px 16px rgba(255,255,255,.9),
+    0 5px 10px -5px rgba(120,140,172,.42);
+}
+/* 抵消：独立控制下 hero 的 margin-bottom 与 .ctrl-grid 的 margin-top
+   相邻会**合并**（max(20,20)=20px）；
+   统一控制下中间隔了 .dev-carousel 这个块级盒子，不会合并，
+   变成 20+20=40px，比独立控制宽一倍。
+   给 .dev-carousel 负 margin 抵消掉 hero 那一份，恢复到 20px。 */
+body[data-mode="mobile"] .dev-carousel{
+  margin-bottom:calc(-1 * clamp(16px,2vw,26px));
 }
 body[data-mode="mobile"] .dev-swipe::-webkit-scrollbar{display:none}
 /* 外层容器：箭头与圆点定位在这里，不随滑动内容移动 */
