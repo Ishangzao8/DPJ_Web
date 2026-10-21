@@ -286,8 +286,112 @@ body.panel-open .wrap{padding-right:min(580px,92vw)}
   .rail{left:max(14px,calc((100vw - 1420px)/2 - 200px))}
 }
 
+/* 统一控制：下发对象提示条 */
+.thr-bcast{
+  display:flex;align-items:flex-start;gap:9px;margin-bottom:14px;
+  padding:11px 14px;border-radius:var(--r-md);
+  background:rgba(109,139,181,.12);color:var(--tx-2);
+  font-size:12px;line-height:1.6;
+}
+.thr-bcast b{color:var(--tx-1);font-weight:600}
+.thr-bcast svg{width:15px;height:15px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-top:2px}
+
 /* ═══════════════════════════════════════════════════════════
-   内容面板（属性 / 阈值）
+   设备管理（多设备）
+   ═══════════════════════════════════════════════════════════ */
+.seg-dev{width:100%;margin-bottom:2px}
+.seg-dev button{flex:1}
+/* 设备条目：名称 + 在线状态圆点；独立控制下可点选 */
+.dev-list{display:flex;flex-direction:column;gap:9px;margin-bottom:16px}
+.dev-item{
+  display:flex;align-items:center;gap:12px;
+  padding:13px 15px;border-radius:var(--r-md);
+  background:rgba(255,255,255,.4);box-shadow:var(--sh-raise-sm);
+  transition:.24s var(--ease);
+}
+.dev-item.is-sel{
+  background:var(--gr-accent);color:#fff;
+  box-shadow:0 10px 22px -9px rgba(93,123,166,.7), inset 0 1px 0 rgba(255,255,255,.34);
+}
+.dev-item__dot{
+  width:9px;height:9px;flex:none;border-radius:50%;
+  background:#b9c3d2;box-shadow:0 0 0 3px rgba(185,195,210,.22);
+}
+.dev-item.is-on .dev-item__dot{background:#4cb391;box-shadow:0 0 0 3px rgba(76,179,145,.24)}
+.dev-item__name{
+  font-size:13.5px;font-weight:500;font-family:ui-monospace,Menlo,Consolas,monospace;
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.dev-item__st{margin-left:auto;flex:none;font-size:11.5px;color:var(--tx-3)}
+.dev-item.is-sel .dev-item__st{color:rgba(255,255,255,.82)}
+.dev-item__pick{
+  margin-left:auto;flex:none;font-size:11px;color:var(--tx-3);
+  padding:4px 9px;border-radius:999px;background:rgba(125,143,184,.13);
+}
+/* 统一控制下设备条目不可选，只作状态展示 */
+.dev-list.is-view .dev-item{cursor:default}
+.btn-devadd{
+  width:100%;justify-content:center;gap:9px;
+  border-style:dashed;box-shadow:none;background:rgba(255,255,255,.3);
+}
+.btn-devadd svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.dev-add{
+  border-radius:var(--r-md);padding:16px 15px;margin-bottom:14px;
+  background:rgba(255,255,255,.34);box-shadow:var(--sh-sink);
+}
+.dev-add .fld{margin-bottom:12px}
+.dev-add textarea{
+  width:100%;padding:12px 14px;border-radius:var(--r-sm);border:none;
+  font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;line-height:1.6;
+  color:var(--tx-1);background:rgba(255,255,255,.3);box-shadow:var(--sh-sink);resize:vertical;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   概览多设备：手机端横向滑动 /电脑端每台一行
+   ═══════════════════════════════════════════════════════════ */
+body[data-ctrl="all"] .dev-swipe{display:block}
+.dev-swipe{display:none}
+/* 手机端：横向 scroll-snap 滑动，一屏一台设备。
+   **不用负 margin 抵消留白** —— body 的实际左右留白受 clamp() 与
+   视口宽度影响，写死数值必然对不上（实测差 3px，撑出横向滚动条）。
+   改为让每张 slide 自己带左右内边距：slide 宽度 100%，
+   卡片用 padding 贴边，滑动容器本身不越界。 */
+body[data-mode="mobile"] .dev-swipe{
+  display:flex;gap:0;overflow-x:auto;scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;
+}
+body[data-mode="mobile"] .dev-swipe::-webkit-scrollbar{display:none}
+body[data-mode="mobile"] .dev-swipe::-webkit-scrollbar{display:none}
+.dev-slide{
+  flex:0 0 100%;scroll-snap-align:center;min-width:0;
+  display:flex;flex-direction:column;gap:14px;
+  /* slide 内留白由 .hero 自身的 margin 承担，
+     这里不加 padding —— 容器宽度必须严格等于可视宽度，
+     否则 scroll-snap 的"一屏一台"会偏移。 */
+  box-sizing:border-box;
+}
+/* 设备名贴在卡片右下角 */
+.dev-name-tag{
+  position:absolute;right:14px;bottom:12px;
+  padding:4px 10px;border-radius:999px;
+  background:rgba(125,143,184,.16);color:var(--tx-2);
+  font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace;
+  pointer-events:none;
+}
+/* 电脑端：每台设备各占一行，依次向下排 */
+body[data-mode="desktop"] .dev-rows{display:flex;flex-direction:column;gap:26px}
+.dev-rows{display:none}
+.dev-row{position:relative}
+.dev-row__head{
+  display:flex;align-items:center;gap:10px;margin-bottom:12px;
+  font-size:13px;font-weight:500;color:var(--tx-2);
+  font-family:ui-monospace,Menlo,Consolas,monospace;
+}
+.dev-row__dot{width:8px;height:8px;border-radius:50%;background:#b9c3d2;flex:none}
+.dev-row.is-on .dev-row__dot{background:#4cb391;box-shadow:0 0 0 3px rgba(76,179,145,.24)}
+
+/* ═══════════════════════════════════════════════════════════
+   内容面板（属性 / 阈值 / 设备管理）
    ═══════════════════════════════════════════════════════════ */
 .panel{
   position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);z-index:86;
@@ -585,6 +689,59 @@ body[data-mode="mobile"] .rail-veil.show{display:block;animation:fade .3s var(--
 .m-title{display:flex;align-items:center;gap:13px}
 .m-title h3{font-size:19px;font-weight:600}
 .m-title p{font-size:11.5px;color:var(--tx-3);margin-top:3px}
+/* 设备标签 + 设备切换下拉（统一控制下可点选，切换哪台设备看曲线） */
+.m-devpick{position:relative;margin-left:auto;flex:none;align-self:flex-start}
+.m-devtag{
+  display:flex;align-items:center;gap:7px;
+  padding:5px 10px 5px 11px;border-radius:999px;border:1px solid transparent;
+  background:rgba(109,139,181,.14);color:var(--tx-2);
+  font-size:11.5px;font-weight:500;font-family:ui-monospace,Menlo,Consolas,monospace;
+  white-space:nowrap;cursor:pointer;font-family:ui-monospace,Menlo,Consolas,monospace;
+  transition:background .22s var(--ease),color .22s var(--ease),border-color .22s var(--ease);
+}
+.m-devtag:hover{background:rgba(109,139,181,.22);color:var(--tx-1)}
+.m-devtag[aria-expanded="true"]{
+  background:var(--gr-accent);color:#fff;border-color:rgba(255,255,255,.3);
+  box-shadow:0 8px 18px -8px rgba(93,123,166,.6), inset 0 1px 0 rgba(255,255,255,.3);
+}
+.m-devtag__dot{
+  width:7px;height:7px;flex:none;border-radius:50%;
+  background:#b9c3d2;box-shadow:0 0 0 2px rgba(185,195,210,.2);
+}
+.m-devtag.is-on .m-devtag__dot{background:#8ef0c4;box-shadow:0 0 0 2px rgba(142,240,196,.25)}
+.m-devtag[aria-expanded="true"] .m-devtag__dot{background:#c8fbe6;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
+.m-devtag__cv{width:12px;height:12px;flex:none;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;transition:transform .26s var(--ease)}
+.m-devtag[aria-expanded="true"] .m-devtag__cv{transform:rotate(180deg)}
+/* 下拉菜单 */
+.m-devmenu{
+  position:absolute;top:calc(100% + 7px);right:0;z-index:5;
+  min-width:150px;padding:5px;border-radius:var(--r-md);
+  background:var(--glass-strong);
+  -webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%);
+  border:1px solid var(--glass-brd);box-shadow:var(--sh-float);
+  display:flex;flex-direction:column;gap:2px;
+  animation:tin .22s var(--ease);
+}
+/* **`hidden` 属性会被作者样式里的 display 覆盖**（HTML 规范明文规定的特例：
+   UA 样式表里的 `[hidden]{display:none}` 优先级极低，任何作者声明的
+   display:flex/grid/block 都会盖掉它）。
+   .m-devmenu 声明了 display:flex，不加这条 `menu.hidden=true` 完全无效 ——
+   表现为"点完设备，选项框不消失"。
+   这条兜底规则让 hidden 在本页面任何元素上都可靠生效。 */
+[hidden]{display:none !important}
+.m-devopt{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;border:none;border-radius:var(--r-sm);
+  background:transparent;cursor:pointer;text-align:left;
+  font-size:12px;font-family:ui-monospace,Menlo,Consolas,monospace;
+  color:var(--tx-2);transition:background .2s var(--ease),color .2s var(--ease);
+}
+.m-devopt:hover{background:rgba(255,255,255,.55);color:var(--tx-1)}
+.m-devopt.is-on{background:var(--gr-accent);color:#fff;
+  box-shadow:0 6px 14px -7px rgba(93,123,166,.66), inset 0 1px 0 rgba(255,255,255,.28)}
+.m-devopt__dot{width:7px;height:7px;flex:none;border-radius:50%;background:#b9c3d2}
+.m-devopt.is-online .m-devopt__dot{background:#4cb391}
+.m-devopt.is-on.is-online .m-devopt__dot{background:#c8fbe6}
 .m-stats{display:flex;gap:clamp(16px,2.6vw,32px);flex-wrap:wrap;margin-bottom:20px}
 .m-stat-k{font-size:10.5px;color:var(--tx-3);letter-spacing:.1em;text-transform:uppercase}
 .m-stat-v{font-size:20px;font-weight:400;margin-top:4px;font-variant-numeric:tabular-nums}
@@ -901,6 +1058,10 @@ body[data-mode="mobile"] .brand{padding-right:50px}
     <span class="rail-dot__i"><svg viewBox="0 0 24 24"><path d="M4 8h9M19 8h1M4 16h3M13 16h7"/><circle cx="15.5" cy="8" r="2.4"/><circle cx="9.5" cy="16" r="2.4"/></svg></span>
     <span class="rail-dot__t">阈值设置</span>
   </button>
+  <button class="rail-dot" data-grp="dev">
+    <span class="rail-dot__i"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.1 14.5a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.03H2a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 3.6 8.6a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.56V2a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.56 1H22a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.56 1z"/></svg></span>
+    <span class="rail-dot__t">设备管理</span>
+  </button>
 
   <!-- 视图模式切换：手机 / 电脑 -->
   <div class="rail-seg" id="railSeg" role="group" aria-label="视图模式">
@@ -954,52 +1115,10 @@ body[data-mode="mobile"] .brand{padding-right:50px}
     </div>
   </div>
 
-  <!-- ══ 概览 ══ -->
-  <section class="hero glass">
-    <div class="hero-top">
-      <div>
-        <div class="hero-label">设备时间</div>
-        <div class="hero-time" id="hTime">--:--<span class="sec">--</span></div>
-        <div class="hero-date">
-          <span id="hWeek">星期 --</span>
-          <span style="color:var(--tx-3)">·</span>
-          <span id="hDate">----.--.--</span>
-        </div>
-      </div>
-      <div style="text-align:right">
-        <div class="hero-label">报警状态</div>
-        <div id="hAlarm" style="margin-top:9px"><span class="alarm-badge alarm-0">正常</span></div>
-      </div>
-    </div>
-
-    <div class="hero-metrics">
-      <div class="metric">
-        <div class="metric-k">温度</div>
-        <div class="metric-v"><span id="hTemp">--</span><span class="u">℃</span></div>
-        <div class="metric-s" id="hTempS">DS18B20</div>
-      </div>
-      <div class="metric">
-        <div class="metric-k">湿度</div>
-        <div class="metric-v"><span id="hHumi">--</span><span class="u">%RH</span></div>
-        <div class="metric-s" id="hHumiS">DHT11</div>
-      </div>
-      <div class="metric">
-        <div class="metric-k">Wi-Fi 信号</div>
-        <div class="metric-v"><span id="hRssi">--</span><span class="u">dBm</span></div>
-        <div class="metric-s" id="hRssiS">ESP8266</div>
-      </div>
-      <div class="metric">
-        <div class="metric-k">温控阈值</div>
-        <div class="metric-pair"><span id="hTH">--</span><span class="sep">/</span><span class="lo" id="hTL">--</span><span class="u">℃</span></div>
-        <div class="metric-s">上限 / 下限</div>
-      </div>
-      <div class="metric">
-        <div class="metric-k">湿控阈值</div>
-        <div class="metric-pair"><span id="hHH">--</span><span class="sep">/</span><span class="lo" id="hHL">--</span><span class="u">%</span></div>
-        <div class="metric-s">上限 / 下限</div>
-      </div>
-    </div>
-  </section>
+  <!-- ══ 概览 ══
+       独立控制：单台设备的概览（hero 内直接渲染）
+       统一控制：每台设备一份 hero，手机端横向滑动、电脑端逐行排列 -->
+  <div id="heroWrap"></div>
 
   <!-- ══ 物模型属性 / 阈值设置 已移入侧栏面板，见文末 #panel ══ -->
 
@@ -1029,7 +1148,51 @@ body[data-mode="mobile"] .brand{padding-right:50px}
   </section>
 
   <section class="panel__sec" id="panelThr" hidden>
+    <!-- 统一控制时的下发对象提示 -->
+    <div class="thr-bcast" id="thrBcast" hidden></div>
     <div class="thr-grid" id="thrGrid"></div>
+  </section>
+
+  <!-- ══ 设备管理 ══ -->
+  <section class="panel__sec" id="panelDev" hidden>
+    <!-- 模式选择：独立控制 / 统一控制 -->
+    <div class="seg seg-dev" id="devMode" role="group" aria-label="控制模式">
+      <button data-cm="single" class="on">独立控制</button>
+      <button data-cm="all">统一控制</button>
+    </div>
+    <p class="hint" id="devModeHint" style="margin:10px 0 16px"></p>
+
+    <!-- 设备列表 -->
+    <div class="dev-list" id="devList"></div>
+
+    <!-- 添加设备 -->
+    <div class="dev-add" id="devAdd" hidden>
+      <div class="fld">
+        <label>设备名称<span class="mono" style="color:var(--tx-3);font-weight:400"> device_name</span></label>
+        <input id="dAddName" placeholder="例如 MCU_51_3" spellcheck="false" autocomplete="off">
+      </div>
+      <div class="fld">
+        <label>产品 ID</label>
+        <input id="dAddPid" placeholder="7t6YJ3uEgO" spellcheck="false" autocomplete="off">
+      </div>
+      <div class="fld">
+        <label>设备 Token</label>
+        <textarea id="dAddTok" rows="3" spellcheck="false"
+          placeholder="version=2018-10-31&amp;res=products%2F…%2Fdevices%2F…" style="font-size:11px"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" id="dAddSave" style="flex:1;min-width:120px">保存并连接</button>
+        <button class="btn" id="dAddCancel">取消</button>
+      </div>
+      <p class="hint" style="margin-top:12px">
+        Token 在 OneNET 开发者中心「设备详情 → 设备凭证」获取，需与上面的设备名称一致。<br>
+        凭据只保存在本机浏览器（localStorage），不会上传到任何服务器。
+      </p>
+    </div>
+    <button class="btn btn-devadd" id="dAddBtn">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      <span>添加设备</span>
+    </button>
   </section>
 </aside>
 
@@ -1042,6 +1205,15 @@ body[data-mode="mobile"] .brand{padding-right:50px}
         <div>
           <h3 id="mName">—</h3>
           <p><span class="mono" id="mId">—</span> · <span id="mType">—</span></p>
+        </div>
+        <!-- 统一控制下可切换查看哪台设备；独立控制下隐藏（只有一台） -->
+        <div class="m-devpick" id="mDevPick" hidden>
+          <button type="button" class="m-devtag" id="mDev" aria-haspopup="listbox" aria-expanded="false">
+            <span class="m-devtag__dot"></span>
+            <span class="m-devtag__t" id="mDevTx">—</span>
+            <svg class="m-devtag__cv" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="m-devmenu" id="mDevMenu" role="listbox" hidden></div>
         </div>
       </div>
       <button class="btn btn-icon" id="mClose" aria-label="关闭">
@@ -1118,6 +1290,60 @@ const DEF = {
   tok:"version=2018-10-31&res=products%2F7t6YJ3uEgO%2Fdevices%2FMCU_51&et=2106766495&method=md5&sign=nNq3bTHUbiRWm28pNPRnEQ%3D%3D"
 };
 
+/* ═══════════════════════════════════════════════════════════
+   1b. 设备注册表（多设备）
+   ───────────────────────────────────────────────────────────
+   每个设备一份独立凭据。DEVICES 存 localStorage，缺省时用内置的两台。
+   设备对象：{ id, pid, dev, tok, label }
+     id   —— 内部唯一标识（用 dev 派生，加密/改名时保持稳定）
+     dev  —— OneNET 设备名称（API 的 device_name）
+     tok  —— 该设备的 Token（设备级；写属性需用户级 Token）
+   注意：各设备的 Token res 里绑定了自己的设备名，
+   所以**不能拿A 设备的 Token 去访问 B 设备** —— 鉴权会失败。 */
+const DEF_DEVICES = [
+  { id:"MCU_51",   pid:"7t6YJ3uEgO", dev:"MCU_51",   tok:DEF.tok,
+    label:"MCU_51" },
+  { id:"MCU_51_2", pid:"7t6YJ3uEgO", dev:"MCU_51_2",
+    tok:"version=2018-10-31&res=products%2F7t6YJ3uEgO%2Fdevices%2FMCU_51_2&et=2108163590&method=md5&sign=j%2B8CyPp16MxRTwhsHo5Rqg%3D%3D",
+    label:"MCU_51_2" }
+];
+const LS_DEVICES = "onenet_devices_v1";
+const LS_CTRL    = "onenet_ctrl_mode";     // "single" 独立控制 | "all" 统一控制
+const LS_SELDEV  = "onenet_sel_device";     // 独立控制下当前选中的设备 id
+
+let DEVICES = [];
+try{
+  const s = localStorage.getItem(LS_DEVICES);
+  if (s){
+    const arr = JSON.parse(s);
+    if (Array.isArray(arr) && arr.length) DEVICES = arr.filter(d => d && d.pid && d.dev && d.tok);
+  }
+}catch(e){}
+if (!DEVICES.length) DEVICES = DEF_DEVICES.map(d => Object.assign({}, d));
+
+/* 控制模式：single = 只作用于当前选中设备；all = 广播到全部设备 */
+let CTRL_MODE = "single";
+try{ const m = localStorage.getItem(LS_CTRL); if (m === "single" || m === "all") CTRL_MODE = m; }catch(e){}
+let SEL_DEV = DEVICES[0].id;
+try{ const s = localStorage.getItem(LS_SELDEV); if (s && DEVICES.some(d => d.id === s)) SEL_DEV = s; }catch(e){}
+
+function saveDevices(){
+  try{ localStorage.setItem(LS_DEVICES, JSON.stringify(DEVICES)); }catch(e){}
+}
+function saveCtrl(){
+  try{
+    localStorage.setItem(LS_CTRL, CTRL_MODE);
+    localStorage.setItem(LS_SELDEV, SEL_DEV);
+  }catch(e){}
+}
+function devById(id){ return DEVICES.filter(d => d.id === id)[0] || null; }
+/* 当前应当接收指令的设备集合 —— 单一数据源，所有下发路径都走它 */
+function targetDevices(){
+  if (CTRL_MODE === "all") return DEVICES.slice();
+  const d = devById(SEL_DEV);
+  return d ? [d] : DEVICES.slice(0, 1);
+}
+
 let CFG = Object.assign({}, DEF);
 try{
   const s = localStorage.getItem("onenet_cfg");
@@ -1156,6 +1382,9 @@ function applyMode(m){
   document.body.dataset.mode = m;
   $$("#railSeg .rail-seg__b").forEach(b => b.classList.toggle("is-on", b.dataset.mode === m));
   syncVeil();
+  /* 视图模式影响概览形态（手机横向滑动 / 电脑逐行），
+     故需重建概览 DOM 并重绘。 */
+  if (typeof buildOverview === "function"){ buildOverview(); paint(); }
   layoutPanel();
 }
 
@@ -1208,12 +1437,58 @@ const WEEK_TXT  = {MON:"星期一",TUE:"星期二",WED:"星期三",THU:"星期�
 /* ═══════════════════════════════════════════════════════════
    3. 状态
    ═══════════════════════════════════════════════════════════ */
-let CUR = {};                 // 最新属性值
-let CUR_T = {};               // 最新属性上报时间(ms)
+/* ═══════════════════════════════════════════════════════════
+   3. 状态
+   ───────────────────────────────────────────────────────────
+   多设备后，属性值/上报时间/在线状态/迷你走势**按设备各存一份**。
+   DSTATE[devId] = { cur:{}, curT:{}, online, last, spark:{} }
+   CUR / CUR_T / ONLINE / LAST 保留为「当前主设备」的快捷引用，
+   让既有渲染代码（paint / drawSpark / openHistory）几乎不用改。 */
+let DSTATE = {};               // devId -> 设备运行时状态
+let CUR = {};                  // 当前主设备属性值
+let CUR_T = {};                // 当前主设备上报时间
 let ONLINE = false;
-let LAST = null;              // last_time
+let LAST = null;
 let timer = null;
-const spark = {};             // 迷你走势缓存
+const spark = {};             // 迷你走势缓存（当前主设备）
+
+/* 取（并在缺失时初始化）某设备的状态槽 */
+function dstate(id){
+  if (!DSTATE[id]) DSTATE[id] = { cur:{}, curT:{}, online:false, last:null, spark:{} };
+  return DSTATE[id];
+}
+/* 主设备 = 独立控制下选中的那台；统一控制下取第一台（仅作展示锚点） */
+function primaryDev(){
+  return devById(SEL_DEV) || DEVICES[0] || null;
+}
+/* 把主设备的状态装载进 CUR / CUR_T / ONLINE / LAST / spark 快捷引用 */
+function loadPrimaryState(){
+  const d = primaryDev();
+  if (!d) return;
+  const st = dstate(d.id);
+  CUR = st.cur; CUR_T = st.curT; ONLINE = st.online; LAST = st.last;
+  // spark 是 const 对象，按属性拷贝引用（pushSpark 会写进这个对象）
+  Object.keys(spark).forEach(k => { delete spark[k]; });
+  Object.keys(st.spark).forEach(k => { spark[k] = st.spark[k]; });
+}
+/* 刷新前把快捷引用里的改动写回主设备状态槽 */
+function savePrimaryState(){
+  const d = primaryDev();
+  if (!d) return;
+  const st = dstate(d.id);
+  st.cur = CUR; st.curT = CUR_T; st.online = ONLINE; st.last = LAST;
+  st.spark = {};
+  Object.keys(spark).forEach(k => { st.spark[k] = spark[k]; });
+}
+/* 切换主设备：先存旧、再载新 */
+function switchPrimary(id){
+  if (id === SEL_DEV) return;
+  savePrimaryState();
+  SEL_DEV = id;
+  loadPrimaryState();
+  saveCtrl();
+}
+
 const $  = s => document.querySelector(s);
 const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
 
@@ -1258,10 +1533,14 @@ function errText(code, msg){
 /* ═══════════════════════════════════════════════════════════
    5. API
    ═══════════════════════════════════════════════════════════ */
-async function call(path, opt){
+async function call(path, opt, dev){
   opt = opt || {};
+  /* dev 为空时用 CFG（兼容旧的单设备调用点）。
+     传入设备时用该设备自己的凭据 —— 各设备 Token 绑定自身设备名，
+     混用会导致鉴权失败。 */
+  const d = dev || CFG;
   const url = API + path + (opt.q ? "?" + opt.q : "");
-  const h = { "authorization": CFG.tok, "Content-Type": "application/json" };
+  const h = { "authorization": d.tok, "Content-Type": "application/json" };
   let r;
   try{
     r = await fetch(url, {
@@ -1280,21 +1559,24 @@ async function call(path, opt){
   return j.data;
 }
 
-async function getDetail(){
-  const q = "product_id=" + encodeURIComponent(CFG.pid) + "&device_name=" + encodeURIComponent(CFG.dev);
-  return call("/device/detail", { q: q });
+async function getDetail(dev){
+  const d = dev || CFG;
+  const q = "product_id=" + encodeURIComponent(d.pid) + "&device_name=" + encodeURIComponent(d.dev);
+  return call("/device/detail", { q: q }, d);
 }
-async function getProps(){
-  const q = "product_id=" + encodeURIComponent(CFG.pid) + "&device_name=" + encodeURIComponent(CFG.dev);
-  const arr = await call("/thingmodel/query-device-property", { q: q });
+async function getProps(dev){
+  const d = dev || CFG;
+  const q = "product_id=" + encodeURIComponent(d.pid) + "&device_name=" + encodeURIComponent(d.dev);
+  const arr = await call("/thingmodel/query-device-property", { q: q }, d);
   const out = {};
   (arr || []).forEach(o => { if (o.identifier) out[o.identifier] = o; });
   return out;
 }
-async function setProp(params){
+async function setProp(params, dev){
+  const d = dev || CFG;
   return call("/thingmodel/set-device-property", {
-    body: { product_id: CFG.pid, device_name: CFG.dev, params: params }
-  });
+    body: { product_id: d.pid, device_name: d.dev, params: params }
+  }, d);
 }
 /* 历史数据查询。
    **limit 必须随时间窗放大**，否则 24小时/7天 会只拿到"最新 100 条"：
@@ -1304,19 +1586,20 @@ async function setProp(params){
    实测平台支持更大 limit：7 天窗口全量仅 618 条，limit=1000 即可取完。
    放大后统一在本地按目标点数抽稀，既拿到全时段又不拖慢渲染。 */
 const HIST_MAX = 1000;
-async function getHistory(id, hours, want){
+async function getHistory(id, hours, want, dev){
+  const d = dev || CFG;
   const end = Date.now(), start = end - hours * 3600000;
   const q = [
-    "product_id=" + encodeURIComponent(CFG.pid),
-    "device_name=" + encodeURIComponent(CFG.dev),
+    "product_id=" + encodeURIComponent(d.pid),
+    "device_name=" + encodeURIComponent(d.dev),
     "identifier=" + encodeURIComponent(id),
     "start_time=" + start,
     "end_time=" + end,
     "sort=2",
     "limit=" + HIST_MAX
   ].join("&");
-  const d = await call("/thingmodel/query-device-property-history", { q: q });
-  const all = ((d && d.list) || []).slice().reverse();   // 倒序 → 时间正序
+  const r = await call("/thingmodel/query-device-property-history", { q: q }, d);
+  const all = ((r && r.list) || []).slice().reverse();   // 倒序 → 时间正序
   if (all.length <= want) return { list: all, total: all.length, all: all };
   return { list: pickEven(all, want), total: all.length, all: all };
 }
@@ -1732,10 +2015,20 @@ function preview(id, v){
   }
   const c = $('.card[data-id="' + id + '"]');
   if (c) renderCardVal(c, P[id]);
-  if (id === "temp_high") $("#hTH").textContent = v === null ? "--" : v;
-  if (id === "temp_low")  $("#hTL").textContent = v === null ? "--" : v;
-  if (id === "humi_high") $("#hHH").textContent = v === null ? "--" : v;
-  if (id === "humi_low")  $("#hHL").textContent = v === null ? "--" : v;
+  /* 概览里的阈值读数：hero 已是多设备结构（id 形如 h_<devId>_<slot>TH），
+     不能再用固定的 #hTH/#hTL —— 那些节点已不存在，
+     直接 $("...").textContent 会抛 TypeError 中断整个 preview()，
+     导致后续 fire() 不执行（下发链路静默失效）。
+     故改为按当前主设备动态定位。 */
+  const d = primaryDev();
+  if (d){
+    const pfx = "h_" + d.label + "_" + (CTRL_MODE === "all" ? d.id : "main");
+    const slot = { temp_high:"TH", temp_low:"TL", humi_high:"HH", humi_low:"HL" }[id];
+    if (slot){
+      const el = $("#" + pfx + slot);
+      if (el) el.textContent = v === null ? "--" : v;
+    }
+  }
 }
 
 /* 卡片数值渲染 */
@@ -1777,6 +2070,18 @@ function pushSpark(id, v){
   a.push(v);
   if (a.length > 28) a.shift();
 }
+/* 迷你走势按设备各存一份：概览多设备同时展示时不能共用一条曲线 */
+function pushSparkFor(devId, id, v){
+  const st = dstate(devId);
+  const a = st.spark[id] || (st.spark[id] = []);
+  a.push(v);
+  if (a.length > 28) a.shift();
+  if (devId === (primaryDev() || {}).id){        // 同步到主设备的快捷引用
+    const b = spark[id] || (spark[id] = []);
+    b.push(v);
+    if (b.length > 28) b.shift();
+  }
+}
 function drawSpark(cv, id){
   const a = spark[id];
   if (!a || a.length < 2){ cv.style.display = "none"; return; }
@@ -1813,6 +2118,50 @@ function drawSpark(cv, id){
    8. 主刷新
    ═══════════════════════════════════════════════════════════ */
 let busy = false;
+/* 刷新单台设备：详情 + 属性，写入它自己的状态槽。
+   绝不碰全局 CUR/CUR_T —— 那些是主设备的视图。
+   返回 {online, err} 供上层汇总。 */
+async function refreshDevice(dev){
+  const st = dstate(dev.id);
+  try{
+    const d = await getDetail(dev);
+    /* OneNET /device/detail 没有 online 字段，在线状态在 status：
+       0=离线 1=在线 2=未激活（见官方文档「设备详情」data.status）。
+       曾误读 d.online → undefined → 永远显示离线。
+       另加一层兜底：status 缺失时按 last_time 新鲜度推断（5 分钟内有上报即视为在线），
+       避免平台改字段后又整体失效。 */
+    const last = d.last_time ? new Date(d.last_time).getTime() : null;
+    const s = d.status;
+    let online;
+    if (s === 0 || s === 1 || s === 2){
+      online = (s === 1);
+    }else{
+      online = !!(last && (Date.now() - last) < 300000);
+    }
+    st.last = last;
+    st.online = online;
+    st.unactivated = (s === 2);
+
+    const props = await getProps(dev);
+    Object.keys(props).forEach(id => {
+      const o = props[id];
+      if (o.time) st.curT[id] = o.time;
+      if (o.value !== undefined && o.value !== null && o.value !== ""){
+        st.cur[id] = o.value;
+        const p = P[id];
+        if (p && !p.isText && !isCmd(id)) pushSparkFor(dev.id, id, parseFloat(o.value));
+      }else if (st.cur[id] === undefined){
+        st.cur[id] = null;   // 明确标记为无数据
+      }
+    });
+    return { dev:dev, online:online, unactivated:(s === 2), last:last, err:null };
+  }catch(e){
+    st.online = false;
+    st.last = st.last || null;
+    return { dev:dev, online:false, unactivated:false, last:st.last, err:e.message };
+  }
+}
+
 async function refresh(manual){
   if (busy) return;
   busy = true;
@@ -1820,31 +2169,30 @@ async function refresh(manual){
   ico.classList.add("spin");
 
   try{
-    const d = await getDetail();
-    /* OneNET /device/detail 没有 online 字段，在线状态在 status：
-       0=离线 1=在线 2=未激活（见官方文档「设备详情」data.status）。
-       曾误读 d.online → undefined → 永远显示离线。
-       另加一层兜底：status 缺失时按 last_time 新鲜度推断（5 分钟内有上报即视为在线），
-       避免平台改字段后又整体失效。 */
-    LAST = d.last_time ? new Date(d.last_time).getTime() : null;
-    const st = d.status;
-    let online;
-    if (st === 0 || st === 1 || st === 2){
-      online = (st === 1);
-    }else{
-      online = !!(LAST && (Date.now() - LAST) < 300000);
-    }
-    if (st === 2){
+    /* 统一控制：并行刷新全部设备；
+       独立控制：只刷新当前选中设备（概览不展示其他设备，无需多刷）。 */
+    const list = CTRL_MODE === "all" ? DEVICES.slice() : targetDevices();
+    const results = await Promise.all(list.map(refreshDevice));
+
+    // 主设备视图装载（其他设备的状态留在各自槽里，概览多设备展示时直接读）
+    loadPrimaryState();
+
+    const prim = primaryDev();
+    const primRes = results.filter(r => prim && r.dev.id === prim.id)[0];
+    const unact = results.filter(r => r.unactivated);
+
+    if (unact.length){
+      const r0 = unact[0];
       ONLINE = false;
       banner("设备未激活",
-        "设备在平台上的状态是「未激活」，设备可能从未成功连上云端，或密钥/产品配置不匹配。" +
-        "请核对 config.h 里的 ONENET_PRODUCT_ID / ONENET_DEVICE_NAME / ONENET_MQTT_TOKEN。");
+        "设备「" + r0.dev.label + "」在平台上的状态是「未激活」，设备可能从未成功连上云端，或密钥/产品配置不匹配。" +
+        "请核对固件里的 ONENET_PRODUCT_ID / ONENET_DEVICE_NAME / ONENET_MQTT_TOKEN。");
       paint();
       if (manual) toast("设备未激活", "err");
       return;
     }
-    ONLINE = online;
 
+    ONLINE = primRes ? primRes.online : false;
     if (!ONLINE){
       banner("设备当前离线",
         "平台最后一次收到数据是 " + fmtTime(LAST) + "（" + fmtAgo(LAST) + "）。" +
@@ -1853,24 +2201,17 @@ async function refresh(manual){
       banner(null);
     }
 
-    const props = await getProps();
-    let anyFresh = false;
-    Object.keys(props).forEach(id => {
-      const o = props[id];
-      if (o.time) CUR_T[id] = o.time;
-      if (o.value !== undefined && o.value !== null && o.value !== ""){
-        CUR[id] = o.value;
-        anyFresh = true;
-        const p = P[id];
-        if (p && !p.isText && !isCmd(id)) pushSpark(id, parseFloat(o.value));
-      }else if (CUR[id] === undefined){
-        CUR[id] = null;   // 明确标记为无数据
-      }
-    });
-
     paint();
+    /* 设备状态圆点由 renderDevPanel() / paintOverview() 各自负责更新，
+       不需要在这里额外调用（此前误写了一个不存在的 renderDevBars()，
+       导致每次刷新都抛 ReferenceError，被 catch 捕获后误报"无法连接 OneNET 平台"）。 */
     if ($("#panel").classList.contains("open") && !$("#panelProps").hidden) layoutPanel();
-    if (manual) toast("已刷新 · " + (ONLINE ? "设备在线" : "设备离线"), ONLINE ? "ok" : "info");
+    if (manual){
+      const n = results.filter(r => r.online).length;
+      toast("已刷新 · " + (CTRL_MODE === "all"
+        ? n + "/" + results.length + " 台在线"
+        : (ONLINE ? "设备在线" : "设备离线")), ONLINE ? "ok" : "info");
+    }
   }catch(e){
     ONLINE = false;
     banner("无法连接 OneNET 平台", e.message);
@@ -1903,45 +2244,171 @@ function paint(){
     if (document.activeElement !== inp && dragId !== p.id) loadThr(p, inp);
   });
 
-  const dt = CUR.datetime ? String(CUR.datetime) : "";
-  const m = dt.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
-  if (m){
-    $("#hTime").innerHTML = '<span>' + m[4] + ':' + m[5] + '</span><span class="sec">' + m[6] + '</span>';
-    $("#hDate").textContent = m[1] + "-" + m[2] + "-" + m[3];
-  }else{
-    $("#hTime").innerHTML = '--:--<span class="sec">--</span>';
-    $("#hDate").textContent = "----.--.--";
+  /* 概览区：多设备时每台各渲染一份，单设备时渲染主设备那份。
+     （原代码在这里直接写 #hTime/#hTemp 等固定 id，
+      多设备下每台设备需要独立 id，故统一交给 paintOverview 处理。） */
+  paintOverview();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   8b. 概览多设备渲染
+   ───────────────────────────────────────────────────────────
+   独立控制：只有一台设备，渲染单份 hero（保持原样）。
+   统一控制：每台设备一份 hero。
+     · 手机端 —— 横向 scroll-snap 滑动，一屏一台
+     · 电脑端 —— 每台设备各占一行，依次向下排
+   每份 hero 用独立 id 前缀（h_<devId>_<slot>），避免 id 冲突。 */
+function heroHTML(devId, slot){
+  const pfx = "h_" + devId + "_" + slot;
+  return '<section class="hero glass" data-hero="' + devId + '">' +
+    '<div class="hero-top">' +
+      '<div>' +
+        '<div class="hero-label">设备时间</div>' +
+        '<div class="hero-time" id="' + pfx + 'Time">--:--<span class="sec">--</span></div>' +
+        '<div class="hero-date">' +
+          '<span id="' + pfx + 'Week">星期 --</span>' +
+          '<span style="color:var(--tx-3)">·</span>' +
+          '<span id="' + pfx + 'Date">----.--.--</span>' +
+        '</div>' +
+      '</div>' +
+      '<div style="text-align:right">' +
+        '<div class="hero-label">报警状态</div>' +
+        '<div id="' + pfx + 'Alarm" style="margin-top:9px"><span class="alarm-badge alarm-0">正常</span></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="hero-metrics">' +
+      '<div class="metric"><div class="metric-k">温度</div>' +
+        '<div class="metric-v"><span id="' + pfx + 'Temp">--</span><span class="u">℃</span></div>' +
+        '<div class="metric-s" id="' + pfx + 'TempS">DS18B20</div></div>' +
+      '<div class="metric"><div class="metric-k">湿度</div>' +
+        '<div class="metric-v"><span id="' + pfx + 'Humi">--</span><span class="u">%RH</span></div>' +
+        '<div class="metric-s" id="' + pfx + 'HumiS">DHT11</div></div>' +
+      '<div class="metric"><div class="metric-k">Wi-Fi 信号</div>' +
+        '<div class="metric-v"><span id="' + pfx + 'Rssi">--</span><span class="u">dBm</span></div>' +
+        '<div class="metric-s" id="' + pfx + 'RssiS">ESP8266</div></div>' +
+      '<div class="metric"><div class="metric-k">温控阈值</div>' +
+        '<div class="metric-pair"><span id="' + pfx + 'TH">--</span><span class="sep">/</span>' +
+        '<span class="lo" id="' + pfx + 'TL">--</span><span class="u">℃</span></div>' +
+        '<div class="metric-s">上限 / 下限</div></div>' +
+      '<div class="metric"><div class="metric-k">湿控阈值</div>' +
+        '<div class="metric-pair"><span id="' + pfx + 'HH">--</span><span class="sep">/</span>' +
+        '<span class="lo" id="' + pfx + 'HL">--</span><span class="u">%</span></div>' +
+        '<div class="metric-s">上限 / 下限</div></div>' +
+    '</div>' +
+    '<span class="dev-name-tag">' + (devId || "") + '</span>' +
+  '</section>';
+}
+
+/* 构建概览区DOM。模式切换 / 增删设备后要重建。 */
+function buildOverview(){
+  const wrap = $("#heroWrap");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+
+  if (CTRL_MODE !== "all"){
+    // 独立控制：单台设备，结构与原来完全一致
+    const d = primaryDev();
+    wrap.className = "";
+    wrap.innerHTML = heroHTML(d ? d.label : "", "main");
+    return;
   }
-  const wk = CUR.week ? String(CUR.week) : "";
-  $("#hWeek").textContent = WEEK_TXT[wk] || (wk ? wk : "星期 --");
 
-  const lv = parseInt(CUR.alarm, 10);
-  const ok = !isNaN(lv);
-  const el = $("#hAlarm");
-  el.innerHTML = '<span class="alarm-badge alarm-' + (ok ? lv : 0) + '">' +
-    (ok ? (ALARM_TXT[lv] || ("状态 " + lv)) : "无数据") + '</span>';
-
-  const tp = CUR.temperature, hm = CUR.humidity, rs = CUR.rssi;
-  $("#hTemp").textContent = tp != null ? fmtVal(tp, P.temperature) : "--";
-  $("#hHumi").textContent = hm != null ? fmtVal(hm, P.humidity) : "--";
-  $("#hRssi").textContent = rs != null ? fmtVal(rs, P.rssi) : "--";
-  $("#hTempS").textContent = tp != null ? fmtAgo(CUR_T.temperature) : "DS18B20 · 传感器未上报";
-  $("#hHumiS").textContent = hm != null ? fmtAgo(CUR_T.humidity) : "DHT11 · 未接/未上报";
-  $("#hRssiS").textContent = rs != null ? fmtAgo(CUR_T.rssi) : "ESP8266";
-
-  ["temp_high:hTH","temp_low:hTL","humi_high:hHH","humi_low:hHL"].forEach(pair => {
-    const a = pair.split(":");
-    const v = CUR[a[0]];
-    $("#" + a[1]).textContent = v != null ? fmtVal(v, P[a[0]]) : "--";
+  // 统一控制：手机端横向滑动 / 电脑端逐行
+  const mobile = isMobileMode();
+  wrap.className = mobile ? "dev-swipe" : "dev-rows";
+  DEVICES.forEach(d => {
+    if (mobile){
+      const slide = document.createElement("div");
+      slide.className = "dev-slide";
+      slide.innerHTML = heroHTML(d.label, d.id);
+      wrap.appendChild(slide);
+    }else{
+      const row = document.createElement("div");
+      row.className = "dev-row";
+      row.dataset.row = d.id;
+      row.innerHTML = '<div class="dev-row__head">' +
+        '<span class="dev-row__dot"></span><span class="dev-row__name"></span>' +
+        '<span class="dev-row__st"></span></div>' +
+        heroHTML(d.label, d.id);
+      row.querySelector(".dev-row__name").textContent = d.label || d.dev;
+      wrap.appendChild(row);
+    }
   });
+}
+
+/* 把某台设备的数据刷进它那一份 hero */
+function paintHero(devId, slot){
+  const d = devById(devId);
+  const st = dstate(devId);
+  const pfx = "h_" + devId + "_" + slot;
+  const cur = st.cur, curT = st.curT;
+
+  const dt = cur.datetime ? String(cur.datetime) : "";
+  const m = dt.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+  const tEl = $("#" + pfx + "Time"), dEl = $("#" + pfx + "Date"), wEl = $("#" + pfx + "Week");
+  if (!tEl) return;
+  if (m){
+    tEl.innerHTML = '<span>' + m[4] + ':' + m[5] + '</span><span class="sec">' + m[6] + '</span>';
+    dEl.textContent = m[1] + "-" + m[2] + "-" + m[3];
+  }else{
+    tEl.innerHTML = '--:--<span class="sec">--</span>';
+    dEl.textContent = "----.--.--";
+  }
+  const wk = cur.week ? String(cur.week) : "";
+  wEl.textContent = WEEK_TXT[wk] || (wk ? wk : "星期 --");
+
+  const lv = parseInt(cur.alarm, 10);
+  const ok = !isNaN(lv);
+  const aEl = $("#" + pfx + "Alarm");
+  if (aEl){
+    aEl.innerHTML = '<span class="alarm-badge alarm-' + (ok ? lv : 0) + '">' +
+      (ok ? (ALARM_TXT[lv] || ("状态 " + lv)) : "无数据") + '</span>';
+  }
+
+  const tp = cur.temperature, hm = cur.humidity, rs = cur.rssi;
+  const set = (id, v) => { const e = $("#" + pfx + id); if (e) e.textContent = v; };
+  set("Temp", tp != null ? fmtVal(tp, P.temperature) : "--");
+  set("Humi", hm != null ? fmtVal(hm, P.humidity) : "--");
+  set("Rssi", rs != null ? fmtVal(rs, P.rssi) : "--");
+  set("TempS", tp != null ? fmtAgo(curT.temperature) : "DS18B20 · 传感器未上报");
+  set("HumiS", hm != null ? fmtAgo(curT.humidity) : "DHT11 · 未接/未上报");
+  set("RssiS", rs != null ? fmtAgo(curT.rssi) : "ESP8266");
+
+  [["TH","temp_high"],["TL","temp_low"],["HH","humi_high"],["HL","humi_low"]].forEach(pair => {
+    const v = cur[pair[1]];
+    set(pair[0], v != null ? fmtVal(v, P[pair[1]]) : "--");
+  });
+}
+
+/* 刷新概览区所有设备的显示 */
+function paintOverview(){
+  if (CTRL_MODE === "all"){
+    DEVICES.forEach(d => {
+      paintHero(d.id, d.id);
+      const row = $(".dev-row[data-row='" + d.id + "']");
+      if (!row) return;
+      const st = dstate(d.id);
+      row.classList.toggle("is-on", !!st.online);
+      const stEl = row.querySelector(".dev-row__st");
+      if (stEl) stEl.textContent = st.online ? "在线" : "离线";
+    });
+  }else{
+    const d = primaryDev();
+    if (d) paintHero(d.label, "main");
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
    9. 下发
    ═══════════════════════════════════════════════════════════ */
+/* 最近一次广播下发的记录（供调试与"发送对象"提示用） */
+let LAST_SEND = { id:null, value:null, targets:[], ok:[], bad:[] };
+window.LAST_SEND = LAST_SEND;   // 挂到 window 便于控制台/自动化观测
+
 async function fire(id, btn, override, inp){
   const isThresh = override && !isCmd(id);
   const value = isThresh ? override.value : 1;
+  const targets = targetDevices();          // 独立=选中那台，统一=全部
 
   // ── 控制命令：立刻反馈「已执行」，不等设备响应 ──
   // 卡片本身就是按钮（内含图标+文字），用 class 做状态反馈，
@@ -1953,7 +2420,7 @@ async function fire(id, btn, override, inp){
     const lbl = btn.querySelector(".ctrl-name");
     const old = lbl ? lbl.textContent : "";
     if (lbl) lbl.textContent = "已执行";
-    toast(P[id].name + " · 已执行", "ok");
+    toast(P[id].name + " · 已执行" + (targets.length > 1 ? " → " + targets.length + " 台设备" : ""), "ok");
     setTimeout(() => {
       if (lbl) lbl.textContent = old;
       btn.classList.remove("done");
@@ -1964,12 +2431,38 @@ async function fire(id, btn, override, inp){
   try{
     const params = {};
     params[id] = value;
-    await setProp(params);
+    /* 统一控制：向每台设备分别下发。
+       各设备 Token 绑定自身设备名，不能用一台的凭据写另一台。 */
+    const results = await Promise.all(targets.map(async d => {
+      try{ await setProp(params, d); return { dev:d, ok:true }; }
+      catch(e){ return { dev:d, ok:false, err:e.message }; }
+    }));
+    const bad = results.filter(r => !r.ok);
+    /* 改属性而非重新赋值 —— window.LAST_SEND 指向同一个对象 */
+    Object.assign(LAST_SEND, {
+      id:id, value:value,
+      targets:targets.map(t => t.label || t.dev),
+      ok:results.filter(r => r.ok).map(r => r.dev.label || r.dev.dev),
+      bad:bad.map(b => b.dev.label || b.dev.dev)
+    });
+
     if (isThresh){
-      CUR[id] = value;
+      // 成功的那几台，本地先记下新值（不等设备回读）
+      results.forEach(r => { if (r.ok) dstate(r.dev.id).cur[id] = value; });
+      loadPrimaryState();
       paint();
-      if (inp) toast(P[id].name + " 已下发 " + value + P[id].unit, "ok");
-      setTimeout(() => refresh(false), 1400);   // 等 ESP 回读 TP 后再校准
+      if (bad.length === 0){
+        if (inp) toast(P[id].name + " 已下发 " + value + P[id].unit +
+          (targets.length > 1 ? " → " + targets.length + " 台设备" : ""), "ok");
+        setTimeout(() => refresh(false), 1400);   // 等 ESP 回读 TP 后再校准
+      }else{
+        toast(P[id].name + " 部分失败：" + bad.map(b => b.dev.label).join("、") + " — " + bad[0].err, "err");
+        setTimeout(() => refresh(false), 1400);
+      }
+    }else if (bad.length){
+      banner("指令未送达",
+        P[id].name + "：已发送，但 " + bad.map(b => b.dev.label).join("、") + " 返回——" + bad[0].err);
+      setTimeout(() => refresh(false), 600);
     }
   }catch(e){
     // 阈值类需要回滚并提示；控制命令已先行反馈，这里只补充说明
@@ -1986,12 +2479,102 @@ async function fire(id, btn, override, inp){
 /* ═══════════════════════════════════════════════════════════
    10. 历史数据
    ═══════════════════════════════════════════════════════════ */
-let M = { id:null, p:null, hours:1 };
+let M = { id:null, p:null, hours:1, dev:null };
+
+/* 渲染弹窗头部的设备选择器（统一控制下可切换看哪台设备）。
+   curDev 是当前这条曲线所属的设备。
+   注意不要在这里动menu.hidden —— 10 秒轮询会间接触发 paint，
+   若每次渲染都收起菜单，用户正要点选项时会被强制合上。
+   菜单的收起由调用方在明确时机处理：
+     openHistory（打开弹窗）→ switchHistDev（选定设备）→ closeHistory（关闭弹窗）。 */
+function renderDevPick(curDev){
+  const box = $("#mDevPick"), btn = $("#mDev"), menu = $("#mDevMenu");
+  if (!box) return;
+  // 独立控制：只有一台固定设备，不需要切换
+  if (CTRL_MODE !== "all" || DEVICES.length < 2){
+    box.hidden = true;
+    closeDevMenu();
+    return;
+  }
+  box.hidden = false;
+  const label = curDev ? (curDev.label || curDev.dev) : "—";
+  $("#mDevTx").textContent = label;
+  const st = curDev ? dstate(curDev.id) : null;
+  btn.classList.toggle("is-on", !!(st && st.online));
+
+  menu.innerHTML = "";
+  DEVICES.forEach(d => {
+    const o = {
+      dev:d, name:d.label || d.dev,
+      on:!!dstate(d.id).online,
+      sel:!!(curDev && curDev.id === d.id)
+    };
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "m-devopt"
+      + (o.on ? " is-online" : "")
+      + (o.sel ? " is-on" : "");
+    b.setAttribute("role", "option");
+    b.setAttribute("aria-selected", String(o.sel));
+    b.innerHTML = '<span class="m-devopt__dot"></span><span></span>';
+    b.lastChild.textContent = o.name;
+    b.addEventListener("click", () => {
+      closeDevMenu();
+      if (o.sel) return;
+      switchHistDev(d);
+    });
+    menu.appendChild(b);
+  });
+}
+/* 开合下拉 */
+function openDevMenu(){
+  const menu = $("#mDevMenu"), btn = $("#mDev");
+  if (!menu || !btn) return;
+  menu.hidden = false;
+  btn.setAttribute("aria-expanded", "true");
+}
+function closeDevMenu(){
+  const menu = $("#mDevMenu"), btn = $("#mDev");
+  if (!menu || !btn) return;
+  menu.hidden = true;
+  btn.setAttribute("aria-expanded", "false");
+}
+/* 重置弹窗的图表/表格区为"正在读取"状态。
+     openHistory 与 switchHistDev 都需要，共用一份避免两处不一致。 */
+function resetHistBody(){
+  $("#chartBox").hidden = !!M.p.isText;
+  $("#chartBox").innerHTML = M.p.isText ? "" :
+    '<div class="c-empty"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/></svg>正在读取历史数据…</div>';
+  $("#mBody").innerHTML = "";
+  $("#mRange").textContent = "";
+  $("#msN").textContent = "—";
+}
+/* 切换弹窗正在查看的设备，并重新拉该设备的历史数据。
+   选定的设备存M.dev，打开其他物模型属性时继续沿用（见 openHistory）。 */
+function switchHistDev(d){
+  if (!d) return;
+  M.dev = d;
+  // 该设备的"最新值 / 更新时间"要换成它自己的，不能沿用主设备的
+  const st = dstate(d.id);
+  const v = st.cur[M.id];
+  $("#msCur").textContent = v != null ? fmtVal(v, M.p) + (M.p.unit ? " " + M.p.unit : "") : "无数据";
+  $("#msTime").textContent = st.curT[M.id] ? fmtTime(st.curT[M.id]) : "—";
+  renderDevPick(d);
+  // 重新拉数据；不手动改 HIST_SEQ —— loadHist 内部 ++HIST_SEQ 会让旧请求自动作废
+  M.done = false;
+  resetHistBody();
+  loadHist();
+  toast("已切换到 " + (d.label || d.dev), "info");
+}
 
 async function openHistory(id){
   const p = P[id];
   if (!p) return;
-  M = { id: id, p: p, hours: 1 };
+  /* 统一控制：沿用上次在弹窗里选定的设备（M.dev），
+     这样「一个物模型选好设备后，其他物模型也用同一台」——
+     若改成每次取primaryDev()，就会在每次打开时跳回别的设备。 */
+  const dev = (CTRL_MODE === "all" && M.dev) ? M.dev : primaryDev();
+  M = { id: id, p: p, hours: 1, dev: dev };
   // 时间段按钮高亮必须跟随 M.hours 重置。
   // 否则上一次点过别的时段，这次打开弹窗会高亮错位。
   $$("#seg button").forEach(b => b.classList.toggle("on", +b.dataset.h === 1));
@@ -2000,21 +2583,27 @@ async function openHistory(id){
   $("#mName").textContent = p.name;
   $("#mId").textContent = p.id;
   $("#mType").textContent = p.type + (p.unit ? " · " + p.unit : "") + " · " + (p.kind === "rw" ? "读写" : "只读");
+  /* 标明这条曲线来自哪台设备。
+     统一控制下做成可点选的按钮 —— 随机落到某台设备不合理，
+     用户需要能主动切换看哪台；选定的设备全局共享，
+     打开其他物模型属性时继续用同一台（见 openHistory 用 M.dev）。
+     独立控制下只有一台固定设备，不需要切换，隐藏整个选择器。 */
+  renderDevPick(dev);
   $("#mStats").innerHTML = '<div class="m-stat"><div class="m-stat-k">最新值</div><div class="m-stat-v" id="msCur">—</div></div>' +
     '<div class="m-stat"><div class="m-stat-k">更新时间</div><div class="m-stat-v" id="msTime" style="font-size:13px">—</div></div>' +
     '<div class="m-stat"><div class="m-stat-k">记录数</div><div class="m-stat-v" id="msN">—</div></div>';
   // 字符串类型不渲染图表区（只有表格）；否则先显示"正在读取"
-  $("#chartBox").hidden = !!p.isText;
-  $("#chartBox").innerHTML = p.isText ? "" :
-    '<div class="c-empty"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/></svg>正在读取历史数据…</div>';
-  $("#mBody").innerHTML = "";
-  $("#mRange").textContent = "";
+  resetHistBody();
   $("#mask").classList.add("show");
   document.body.style.overflow = "hidden";
 
-  const v = CUR[id];
+  /* 最新值/更新时间必须读**这条曲线所属设备**的状态槽，
+     不能用全局 CUR（那是主设备的）。统一控制下用户可能正在
+     看非主设备的曲线，用 CUR 会显示成另一台设备的数据。 */
+  const st = dev ? dstate(dev.id) : { cur:{}, curT:{} };
+  const v = st.cur[id];
   $("#msCur").textContent = v != null ? fmtVal(v, p) + (p.unit ? " " + p.unit : "") : "无数据";
-  $("#msTime").textContent = CUR_T[id] ? fmtTime(CUR_T[id]) : "—";
+  $("#msTime").textContent = st.curT[id] ? fmtTime(st.curT[id]) : "—";
   loadHist();
 }
 
@@ -2040,7 +2629,7 @@ async function loadHist(){
   try{
     // 期望点数按时间窗递增：短窗要密（看细节），长窗可以稀（只看趋势）
     const want = hours <= 1 ? 120 : hours <= 6 ? 240 : 400;
-    const { list, total, all } = await getHistory(id, hours, want);
+    const { list, total, all } = await getHistory(id, hours, want, M.dev);
     // 令牌过期 = 用户已切到别的时间段/属性，丢弃本次结果
     if (M.id !== id || token !== HIST_SEQ) return;
     M.done = true;
@@ -2349,6 +2938,10 @@ function openDrawer(){
 function closeHistory(){
   $("#mask").classList.remove("show");
   M.id = null; M.done = false;
+  /* 收起设备下拉，避免下次打开时菜单是展开的。
+     注意不清 M.dev —— 统一控制下要记住用户选的是哪台，
+     打开其他物模型属性时继续用同一台。 */
+  closeDevMenu();
   zDrag = null;
   cancelAnimationFrame(zRaf);
   syncScrollLock();
@@ -2370,7 +2963,8 @@ function closeAll(){
 const GRP_META = {
   main:  { title:null },
   props: { title:"物模型属性", sub:"点击任意属性查看历史曲线" },
-  thr:   { title:"阈值设置", sub:"拖动滑轨调整，松手即下发写入 AT24C02" }
+  thr:   { title:"阈值设置", sub:"拖动滑轨调整，松手即下发写入 AT24C02" },
+  dev:   { title:"设备管理", sub:"控制模式、设备在线状态与新增设备" }
 };
 function setGroup(grp){
   $$("#rail .rail-dot").forEach(b => b.classList.toggle("is-on", b.dataset.grp === grp));
@@ -2386,6 +2980,9 @@ function setGroup(grp){
   $("#panelSub").textContent = meta.sub;
   $("#panelProps").hidden = grp !== "props";
   $("#panelThr").hidden   = grp !== "thr";
+  $("#panelDev").hidden   = grp !== "dev";
+  if (grp === "dev") renderDevPanel();
+  if (grp === "thr") renderBcastHint();
   $("#panel").classList.add("open");
   document.body.classList.add("panel-open");
   syncScrollLock();
@@ -2394,8 +2991,140 @@ function setGroup(grp){
 }
 
 /* ═══════════════════════════════════════════════════════════
-   12. 启动
+   11b. 设备管理面板
    ═══════════════════════════════════════════════════════════ */
+/* 阈值面板顶部的「下发对象」提示条。
+   统一控制时说明会广播到哪几台；独立控制时说明只发给哪台。 */
+function renderBcastHint(){
+  const el = $("#thrBcast");
+  if (!el) return;
+  const ts = targetDevices();
+  if (CTRL_MODE === "all"){
+    el.hidden = false;
+    el.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 12h16M12 4v16"/><circle cx="12" cy="12" r="9"/></svg>' +
+      '<div><b>统一控制</b>：这里的阈值变更与消音 / 校时 / 立即上报会同时下发到 ' +
+      ts.length + ' 台设备 —— ' + ts.map(t => t.label || t.dev).join("、") + '。' +
+      '<br>各设备初始阈值可以不同（下方显示的是当前选中设备的值）。</div>';
+  }else{
+    const d = primaryDev();
+    el.hidden = false;
+    el.innerHTML = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>' +
+      '<div><b>独立控制</b>：只发给 <b>' + ((d && (d.label || d.dev)) || "—") + '</b>。' +
+      '切换控制对象请到「设备管理」。</div>';
+  }
+}
+
+/* 渲染设备管理面板：模式按钮 + 设备列表 */
+function renderDevPanel(){
+  renderBcastHint();
+  const mode = $("#devMode");
+  if (!mode) return;
+  $$("#devMode button").forEach(b => b.classList.toggle("on", b.dataset.cm === CTRL_MODE));
+
+  const unified = CTRL_MODE === "all";
+  $("#devModeHint").innerHTML = unified
+    ? "统一控制：阈值变更与消音 / 校时 / 立即上报都会<b>下发到全部设备</b>；概览按设备分开展示。"
+    : "独立控制：所有指令只发给<b>下方选中的那一台设备</b>，概览也只看该设备。";
+
+  const list = $("#devList");
+  list.className = "dev-list" + (unified ? " is-view" : "");
+  list.innerHTML = "";
+  DEVICES.forEach(d => {
+    const st = dstate(d.id);
+    const on = !!st.online;
+    const row = document.createElement("div");
+    row.className = "dev-item" + (on ? " is-on" : "") + (!unified && d.id === SEL_DEV ? " is-sel" : "");
+    row.dataset.id = d.id;
+    row.innerHTML =
+      '<span class="dev-item__dot"></span>' +
+      '<span class="dev-item__name"></span>' +
+      '<span class="dev-item__st"></span>';
+    row.querySelector(".dev-item__name").textContent = d.label || d.dev;
+    row.querySelector(".dev-item__st").textContent = on ? "在线" : "离线";
+    if (!unified){
+      // 独立控制：点条目即切换当前控制对象
+      row.style.cursor = "pointer";
+      row.addEventListener("click", () => {
+        switchPrimary(d.id);
+        loadPrimaryState();
+        paint();
+        renderDevPanel();
+        renderBcastHint();
+        toast("已切换到 " + (d.label || d.dev), "info");
+      });
+    }
+    list.appendChild(row);
+  });
+}
+
+/* 切换控制模式 */
+function setCtrlMode(m){
+  if (m !== "single" && m !== "all") return;
+  CTRL_MODE = m;
+  saveCtrl();
+  document.body.dataset.ctrl = m;
+  // 模式切换后要重新布局概览（多设备展示形态变了）
+  buildOverview();
+  paint();
+  renderDevPanel();
+  renderBcastHint();
+  if (m === "all"){
+    toast("统一控制 · 指令将下发到 " + DEVICES.length + " 台设备", "info");
+    refresh(false);
+  }else{
+    toast("独立控制 · 指令只发给 " + ((primaryDev() || {}).label || ""), "info");
+  }
+}
+
+/* 新增设备：校验 → 试连 → 凭据有效才入库。
+   **必须先试连再入库** —— 否则填错 Token 的设备会永久留在列表里，
+   每次刷新都报错却无法在界面里删掉。 */
+async function addDevice(){
+  const name = $("#dAddName").value.trim();
+  const pid  = $("#dAddPid").value.trim();
+  const tok  = $("#dAddTok").value.trim();
+  if (!name){ toast("请填写设备名称", "err"); $("#dAddName").focus(); return; }
+  if (!pid){  toast("请填写产品 ID", "err"); $("#dAddPid").focus(); return; }
+  if (!tok){  toast("请填写设备 Token", "err"); $("#dAddTok").focus(); return; }
+  if (DEVICES.some(d => d.dev === name)){
+    toast("设备「" + name + "」已存在", "err"); return;
+  }
+  const btn = $("#dAddSave");
+  const old = btn.textContent;
+  btn.disabled = true; btn.textContent = "连接中…";
+  // 先用候选凭据试连一次（不写入注册表）。
+  // 用临时的槽 id，避免失败状态污染正式设备的状态槽。
+  const probe = { id:name, pid:pid, dev:name, tok:tok, label:name };
+  let r;
+  try{
+    r = await refreshDevice(probe);
+  }catch(e){
+    r = { err:e.message, online:false };
+  }
+  // 试连失败会留下一个空状态槽，清理掉
+  if (DSTATE[name] && !DSTATE[name].cur && Object.keys(DSTATE[name].cur).length === 0) delete DSTATE[name];
+  btn.disabled = false; btn.textContent = old;
+  if (r.err){
+    /* 常见原因：Token 的 res 里绑定的设备名与上面填的不一致。
+       平台会报 10402/10404/10413 之类，提示要说清楚。 */
+    let extra = "";
+    if (tok.indexOf(name) < 0 && tok.indexOf(encodeURIComponent(name)) < 0){
+      extra = "（Token 里的设备名与此处填写的「" + name + "」不一致，需一一对应）";
+    }
+    toast(name + " 连接失败：" + r.err + extra + "（未添加）", "err");
+    return;
+  }
+  DEVICES.push(probe);
+  saveDevices();
+  $("#dAddName").value = ""; $("#dAddPid").value = ""; $("#dAddTok").value = "";
+  $("#devAdd").hidden = true;
+  renderDevPanel();
+  toast(name + " 已添加 · " + (r.online ? "在线" : "离线（凭据有效）"), r.online ? "ok" : "info");
+  buildOverview();
+  paint();
+}
+
+
 function startPolling(){
   clearInterval(timer);
   timer = setInterval(() => {
@@ -2408,6 +3137,9 @@ function boot(){
   /* 先落定视图模式（手动选择优先，否则按视口宽度），
      再建卡片 —— layoutPanel 依赖当前模式决定列数。 */
   applyMode(currentMode());
+  /* 控制模式挂到 body 上，CSS 据此切换概览形态 */
+  document.body.dataset.ctrl = CTRL_MODE;
+  buildOverview();                        // 概览多设备结构（要在 paint 之前）
   buildCards();
   $("#refTx").textContent = "刷新";
 
@@ -2436,6 +3168,26 @@ function boot(){
   });
   $("#panelX").addEventListener("click", () => setGroup("main"));
 
+  /* ── 设备管理面板 ── */
+  $("#devMode").addEventListener("click", e => {
+    const b = e.target.closest("button[data-cm]");
+    if (!b) return;
+    setCtrlMode(b.dataset.cm);
+  });
+  $("#dAddBtn").addEventListener("click", () => {
+    const box = $("#devAdd");
+    box.hidden = !box.hidden;
+    if (!box.hidden) $("#dAddName").focus();
+  });
+  $("#dAddCancel").addEventListener("click", () => { $("#devAdd").hidden = true; });
+  $("#dAddSave").addEventListener("click", addDevice);
+  // 回车即保存
+  ["#dAddName","#dAddPid","#dAddTok"].forEach(sel => {
+    $(sel).addEventListener("keydown", e => {
+      if (e.key === "Enter" && sel !== "#dAddTok"){ e.preventDefault(); addDevice(); }
+    });
+  });
+
   /* 点毛玻璃遮罩：先关面板（若开），否则收起侧栏。不锁滚动。 */
   $("#railVeil").addEventListener("click", () => {
     if ($("#panel").classList.contains("open")) return setGroup("main");
@@ -2458,10 +3210,28 @@ function boot(){
   $("#offX").addEventListener("click", closeOff);
   $("#offMask").addEventListener("click", e => { if (e.target === $("#offMask")) closeOff(); });
 
+  /* 历史弹窗的设备选择下拉（统一控制下可用） */
+  $("#mDev").addEventListener("click", e => {
+    e.stopPropagation();
+    const menu = $("#mDevMenu");
+    if (!menu) return;
+    if (menu.hidden) openDevMenu(); else closeDevMenu();
+  });
+  /* 点菜单外部/ 弹窗任意空白处都收起下拉 */
+  document.addEventListener("click", e => {
+    const menu = $("#mDevMenu");
+    if (!menu || menu.hidden) return;
+    if ($("#mDevPick").contains(e.target)) return;   // 已在选择器内部，交给它自己处理
+    closeDevMenu();
+  });
+
   $("#mask").addEventListener("click", e => { if (e.target === $("#mask")) closeHistory(); });
   $("#maskDr").addEventListener("click", e => { if (e.target === $("#maskDr")) closeAll(); });
   document.addEventListener("keydown", e => {
     if (e.key !== "Escape") return;
+    /* 下拉菜单开着时，ESC 先只关下拉（层级最靠上） */
+    const menu = $("#mDevMenu");
+    if (menu && !menu.hidden) return closeDevMenu();
     if ($("#offMask").classList.contains("show")) return closeOff();   // 顶层优先关闭
     if ($("#maskDr").classList.contains("show")) return closeAll();
     if ($("#mask").classList.contains("show")) return closeHistory(); // 回到属性面板，而非主界面
