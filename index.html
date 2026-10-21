@@ -367,7 +367,7 @@ body[data-mode="mobile"] .dev-swipe{
   display:flex;gap:0;overflow-x:auto;scroll-snap-type:x mandatory;
   -webkit-overflow-scrolling:touch;scrollbar-width:none;
   /* 底部留出分页圆点的位置 */
-  padding-bottom:26px;
+  padding-bottom:14px;      /* 底部给分页圆点留的净空，压缩到最小 */
 }
 body[data-mode="mobile"] .dev-swipe::-webkit-scrollbar{display:none}
 /* 外层容器：箭头与圆点定位在这里，不随滑动内容移动 */
@@ -375,7 +375,7 @@ body[data-mode="mobile"] .dev-swipe::-webkit-scrollbar{display:none}
 /* 右缘液态玻璃小圆点 + 双左箭头（<<）：提示"右边还有内容"。
    纯图形，不用文字。只在右缘做一个 —— 左缘再加一个会挡住卡片内容。 */
 .dev-hint{
-  position:absolute;top:0;right:0;bottom:26px;z-index:3;
+  position:absolute;top:0;right:0;bottom:14px;z-index:3;
   width:40px;
   display:flex;align-items:center;justify-content:center;
   opacity:0;transition:opacity .3s var(--ease);
@@ -403,17 +403,18 @@ body[data-mode="mobile"] .dev-swipe::-webkit-scrollbar{display:none}
 .dev-hint__arrow svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .dev-hint__arrow svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 /* 底部圆点分页指示器：几台设备就几个点，当前项拉长 */
+/* 底部分页圆点：贴底居中，占位尽量小 */
 .dev-dots{
-  position:absolute;left:0;right:0;bottom:0;z-index:3;
-  display:flex;align-items:center;justify-content:center;gap:7px;
+  position:absolute;left:0;right:0;bottom:2px;z-index:3;
+  display:flex;align-items:center;justify-content:center;gap:5px;
   pointer-events:none;
 }
 .dev-dot{
-  width:6px;height:6px;border-radius:999px;
+  width:5px;height:5px;border-radius:999px;
   background:rgba(125,143,184,.32);
   transition:width .3s var(--ease),background .3s var(--ease);
 }
-.dev-dot.is-on{width:18px;background:var(--gr-accent)}
+.dev-dot.is-on{width:14px;background:var(--gr-accent)}
 body[data-mode="mobile"] .dev-swipe::-webkit-scrollbar{display:none}
 .dev-slide{
   flex:0 0 100%;scroll-snap-align:center;min-width:0;
