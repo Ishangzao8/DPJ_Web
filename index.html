@@ -3255,15 +3255,12 @@ function renderBcastHint(){
   if (CTRL_MODE === "all"){
     el.hidden = false;
     el.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 12h16M12 4v16"/><circle cx="12" cy="12" r="9"/></svg>' +
-      '<div><b>统一控制</b>：这里的阈值变更与消音 / 校时 / 立即上报会同时下发到 ' +
-      ts.length + ' 台设备 —— ' + ts.map(t => t.label || t.dev).join("、") + '。' +
-      '<br>各设备初始阈值可以不同（下方显示的是当前选中设备的值）。</div>';
+      '<div><b>统一控制</b>';
   }else{
     const d = primaryDev();
     el.hidden = false;
     el.innerHTML = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>' +
-      '<div><b>独立控制</b>：只发给 <b>' + ((d && (d.label || d.dev)) || "—") + '</b>。' +
-      '切换控制对象请到「设备管理」。</div>';
+      '<div><b>独立控制</b>';
   }
 }
 
